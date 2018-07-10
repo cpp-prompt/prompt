@@ -1,4 +1,4 @@
-#include "merge.hpp"
+#include "prompt.hpp"
 
 int main(){
   ot::RadixTree rdtree;

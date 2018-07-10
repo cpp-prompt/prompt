@@ -1,7 +1,6 @@
 #ifndef __PROMPT_H
 #define __PROMPT_H
 
-
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <termios.h>

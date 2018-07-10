@@ -1,20 +1,32 @@
-# Compiled Object files
-*.lo
-*.o
-*.obj
-
-# Compiled Dynamic libraries
-*.so
+*
+!*.cpp
+!*.hpp
 
 
-# Compiled Static libraries
-*.lai
-*.la
-*.a
-*.lib
+/example 
+!/example/*.cpp 
 
-# Executables
-*.exe
-*.out 
+/unittest
+!/unittest/*.cpp
+
+
+## Compiled Object files
+#*.lo
+#*.o
+#*.obj
+#
+## Compiled Dynamic libraries
+#*.so
+#
+#
+## Compiled Static libraries
+#*.lai
+#*.la
+#*.a
+#*.lib
+#
+## Executables
+#*.exe
+#*.out 
 
 

@@ -1,12 +1,14 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "doctest.h"
 
-#include "merge.hpp"
+
 #include <iostream>
 #include <cstring>
 #include <string_view>
 #include <random>
 #include <unordered_set>
+
+#include "prompt.hpp"
 
 std::string gen_random(size_t range) {
   const size_t len {rand()%range + 1};

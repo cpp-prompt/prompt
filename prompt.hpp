@@ -526,7 +526,6 @@ inline int Prompt::_get_cursor_pos(){
   // x1b[6n : DSR - Device Status Report  https://en.wikipedia.org/wiki/ANSI_escape_code 
   // The output will be like : ESC[n;mR, where "n" is the row and "m" is the column.
   // Try this in ur terminal : echo -en "abc \x1b[6n"
-  //if(_cout.write("\x1b[6n", 4); not _cout.good()){
   if(not (_cout << "\x1b[6n")){
     return -1;
   }
@@ -607,13 +606,11 @@ inline void Prompt::_disable_raw_mode(){
 inline size_t Prompt::_terminal_columns(){
   // Use ioctl to get Window size 
   if(winsize ws; ::ioctl(1, TIOCGWINSZ, &ws) == -1 or ws.ws_col == 0){
-    int start, cols;
-    start = _get_cursor_pos();
-    //if(start == -1 or (_cout.write("\x1b[999c", 6) and not _cout.good())){
+    int start = _get_cursor_pos();
     if(start == -1 or not (_cout << "\x1b[999c")){
       return 80;
     }
-    cols = _get_cursor_pos();
+    int cols = _get_cursor_pos();
     if(cols == -1){
       return 80;
     }
@@ -966,13 +963,13 @@ inline void Prompt::_edit_line(std::string &s){
         _history.pop_back(); // Remove the emptry string history added in beginning  
         s =  _line.buf;
         return ;
-      case KEY::CTRL_A: // Go to the start of the line 
+      case KEY::CTRL_A:    // Go to the start of the line 
         if(_line.cur_pos != 0){
           _line.cur_pos = 0;
         }
         _refresh_single_line(_line);
         break;
-      case KEY::CTRL_B:  // Move cursor to left
+      case KEY::CTRL_B:    // Move cursor to left
         if(_line.cur_pos > 0){
           _line.cur_pos --;
         }
@@ -981,7 +978,7 @@ inline void Prompt::_edit_line(std::string &s){
       case KEY::CTRL_C:
         errno = EAGAIN;
         return ;
-      case KEY::CTRL_D:  // Remove the char at the right of cursor. If the line is empty, act as end-of-file
+      case KEY::CTRL_D:    // Remove the char at the right of cursor. If the line is empty, act as end-of-file
         if(_line.buf.size() > 0){
           _key_delete(_line);
           _refresh_single_line(_line);
@@ -991,13 +988,13 @@ inline void Prompt::_edit_line(std::string &s){
           return;
         }
         break;
-      case KEY::CTRL_E: // Move cursor to end of line 
+      case KEY::CTRL_E:    // Move cursor to end of line 
         if(_line.cur_pos != _line.buf.size()){
           _line.cur_pos = _line.buf.size();
         }
          _refresh_single_line(_line);       
         break;
-      case KEY::CTRL_F:  // Move cursor to right
+      case KEY::CTRL_F:    // Move cursor to right
         if(_line.cur_pos != _line.buf.size()){
           _line.cur_pos ++;
         }
@@ -1008,23 +1005,23 @@ inline void Prompt::_edit_line(std::string &s){
         _key_backspace(_line);
         _refresh_single_line(_line);
         break;
-      case KEY::CTRL_K:  // Delete from current to EOF  
+      case KEY::CTRL_K:    // Delete from current to EOF  
         _line.buf.erase(_line.cur_pos, _line.buf.size()-_line.cur_pos);
         _refresh_single_line(_line);
         break;
-      case KEY::CTRL_L:  // Clear screen 
+      case KEY::CTRL_L:    // Clear screen 
         _clear_screen();
         _refresh_single_line(_line);
         break;
-      case KEY::CTRL_N: // Next history command
+      case KEY::CTRL_N:    // Next history command
         _key_next_history(_line);
         _refresh_single_line(_line);
         break;
-      case KEY::CTRL_P:  // Previous history command
+      case KEY::CTRL_P:    // Previous history command
         _key_prev_history(_line);
         _refresh_single_line(_line);
         break;
-      case KEY::CTRL_T:   // Swap current char with previous
+      case KEY::CTRL_T:    // Swap current char with previous
         if(_line.cur_pos > 0){
           std::swap(_line.buf[_line.cur_pos], _line.buf[_line.cur_pos-1]);
           if(_line.cur_pos < _line.buf.size()){
@@ -1033,12 +1030,12 @@ inline void Prompt::_edit_line(std::string &s){
           _refresh_single_line(_line);
         }
         break;
-      case KEY::CTRL_U:  // Delete whole line
+      case KEY::CTRL_U:    // Delete whole line
         _line.cur_pos = 0;
         _line.buf.clear();
         _refresh_single_line(_line);
         break;
-      case KEY::CTRL_W:  // Delete previous word 
+      case KEY::CTRL_W:    // Delete previous word 
         _key_delete_prev_word(_line);
         _refresh_single_line(_line);
         break;

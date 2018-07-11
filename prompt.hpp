@@ -6,6 +6,8 @@
 #include <termios.h>
 #include <sys/ioctl.h>
 #include <pwd.h>
+#include <errno.h>
+#include <unistd.h>
 
 #include <algorithm>
 #include <unistd.h>
@@ -390,7 +392,10 @@ class Prompt {
     std::vector<std::string> _files_match_prefix(const std::filesystem::path&) const;
     std::string _dump_files(const std::vector<std::string>&, const std::filesystem::path&);
     std::string _next_prefix(const std::vector<std::string>&, const size_t);
+
+
     std::filesystem::path _user_home() const;
+    bool _file_read_access(const std::filesystem::path&) const;
 
     // Key handling subroutine
     void _key_backspace(LineInfo&);
@@ -656,6 +661,18 @@ std::filesystem::path Prompt::_user_home() const{
 }
 
 
+// Procedure: _file_read_access 
+// Check a file has read access grant to the user
+bool Prompt::_file_read_access(const std::filesystem::path &path) const {
+  if(auto rval=::access(path.c_str(), F_OK); rval == 0){
+    if(rval = ::access(path.c_str(), R_OK); rval == 0){
+      return true;
+    }
+  }
+  return false;
+}
+
+
 // Procedure: _next_prefix
 // Find the prefix among a set of strings starting from position n
 std::string Prompt::_next_prefix(const std::vector<std::string>& words, const size_t n){
@@ -752,6 +769,10 @@ std::vector<std::string> Prompt::_files_match_prefix(const std::filesystem::path
 std::vector<std::string> Prompt::_files_in_folder(const std::filesystem::path& path) const {
   auto p = path.empty() ? std::filesystem::current_path() : path;
   std::vector<std::string> matches;
+  // Check permission 
+  if(not _file_read_access(p)){
+    return matches;
+  }
   for(const auto& p: std::filesystem::directory_iterator(p)){
     matches.emplace_back(p.path().filename());
   }

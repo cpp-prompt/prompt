@@ -30,7 +30,8 @@ namespace filesystem = experimental::filesystem;
 
 namespace ot {
 
-// Function: read_line
+// Procedure: read_line
+// Read one line from an input stream
 template <typename C, typename T, typename A>
 std::basic_istream<C, T>& read_line(std::basic_istream<C, T>& is, std::basic_string<C, T, A>& line) {
 
@@ -633,7 +634,7 @@ inline size_t Prompt::_terminal_columns(){
 }
 
 
-// Function: user_home
+// Procedure: user_home
 // Return the home folder of user
 std::filesystem::path Prompt::_user_home() const{
   auto home = ::getenv("HOME");
@@ -747,7 +748,7 @@ std::vector<std::string> Prompt::_files_in_folder(const std::filesystem::path& p
 }
 
 
-// Function: _dump_files 
+// Procedure: _dump_files 
 // Format the strings for pretty print in terminal.
 std::string Prompt::_dump_files(const std::vector<std::string>& v){
   if(v.empty()){

@@ -1124,13 +1124,14 @@ inline void Prompt::_refresh_single_line(LineInfo &l){
   auto pos {l.cur_pos};
   size_t start {0};
 
-  while(_prompt.length() + pos >= l.columns){
-    start ++;
-    len --;
-    pos ++;
+  if(_prompt.length()+pos >= l.columns){
+    start += _prompt.length()+pos - l.columns -1;
+    len -= _prompt.length()+pos - l.columns -1;
+    pos += (_prompt.length()+pos - l.columns -1);
   }
-  while(_prompt.length() + len > l.columns){
-    len --;
+
+  if(_prompt.length()+len > l.columns){
+    len -= (_prompt.length()+len - l.columns);
   }
 
   char seq[64];

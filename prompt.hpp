@@ -1065,7 +1065,6 @@ inline void Prompt::_refresh_single_line(LineInfo &l){
   // 4. Append "forward cursor" to the output buffer : Adjust cursor to correct pos
   // 5. Write output buffer to fd  
   
-  //auto len {l.len};
   auto len {l.buf.size()};
   auto pos {l.cur_pos};
   size_t start {0};
@@ -1087,7 +1086,6 @@ inline void Prompt::_refresh_single_line(LineInfo &l){
   // Multiple copies ?
   obuf = CR + _prompt + l.buf.substr(start, len) + EL + std::string(seq);
 
-  //if(_cout.write(obuf.data(), obuf.size()); not _cout.good()){
   if(not (_cout << obuf)){
     _cerr << "Refresh line fail\n";
   }

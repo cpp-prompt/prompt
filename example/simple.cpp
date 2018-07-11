@@ -7,9 +7,16 @@ int main(){
   shell.autocomplete("asia");
   shell.autocomplete("american");
 
-  for(std::string line;;){
+  std::string line;
+
+  //while(shell.readline(line)){
+  //  std::cout << "line = " << line << std::endl;
+  //}
+  //return 0;
+
+  for(;;){
     shell.readline(line);
-    std::cout << "\nline = " << line << std::endl;
+    std::cout << "line = " << line << std::endl;
     // Hit enter to exit
     if(line.empty()){
       break;

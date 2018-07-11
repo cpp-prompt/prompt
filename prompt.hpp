@@ -95,8 +95,7 @@ std::basic_istream<C, T>& read_line(std::basic_istream<C, T>& is, std::basic_str
     
      std::vector<std::string> match_prefix(const std::string&) const;
      std::vector<std::string> all_words() const;
-			
-		 std::string dump();
+     std::string dump();
 
     private:
 

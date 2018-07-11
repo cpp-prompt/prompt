@@ -336,7 +336,7 @@ class Prompt {
 	
     std::string _prompt;  
     std::istream& _cin;
-		std::ostream& _cout;
+    std::ostream& _cout;
     std::ostream& _cerr;
 
     int _infd;

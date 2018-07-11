@@ -10,7 +10,8 @@ int main(){
   for(std::string line;;){
     shell.readline(line);
     std::cout << "\nline = " << line << std::endl;
-    if(line.size() == 0){
+    // Hit enter to exit
+    if(line.empty()){
       break;
     }
   }

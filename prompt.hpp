@@ -18,8 +18,8 @@
 #include <fstream>
 #include <string_view>
 #include <experimental/filesystem>
-#include <optional>
 #include <cassert>
+#include <unordered_map>
 
 
 namespace std {
@@ -284,9 +284,18 @@ enum class KEY{
 	BACKSPACE =  127    /* Backspace */
 };
 
+enum class COLOR{
+  BLACK = 30,
+  RED,
+  GREEN,
+  YELLOW,
+  BLUE,
+  MAGNETA,
+  CYAN,
+  WHITE
+};
 
 
-// \r  : carriage return => move cursor to the beginning of line
 
 // TODO: make Prompt templated at Tree
 class Prompt {
@@ -380,7 +389,7 @@ class Prompt {
 
     std::vector<std::string> _files_in_folder(const std::filesystem::path&) const;
     std::vector<std::string> _files_match_prefix(const std::filesystem::path&) const;
-    std::string _dump_files(const std::vector<std::string>&);
+    std::string _dump_files(const std::vector<std::string>&, const std::filesystem::path&);
     std::string _next_prefix(const std::vector<std::string>&, const size_t);
     std::filesystem::path _user_home() const;
 
@@ -395,6 +404,8 @@ class Prompt {
     bool _key_handle_CSI(LineInfo&);
 
     bool _append_character(LineInfo&, char);
+
+
 };
 
 Prompt::LineInfo::LineInfo(size_t cols): columns(cols){
@@ -750,7 +761,7 @@ std::vector<std::string> Prompt::_files_in_folder(const std::filesystem::path& p
 
 // Procedure: _dump_files 
 // Format the strings for pretty print in terminal.
-std::string Prompt::_dump_files(const std::vector<std::string>& v){
+std::string Prompt::_dump_files(const std::vector<std::string>& v, const std::filesystem::path& path){
   if(v.empty()){
     return {};
   }
@@ -758,9 +769,21 @@ std::string Prompt::_dump_files(const std::vector<std::string>& v){
   const size_t col_width = std::max_element(v.begin(), v.end(), 
                     [](const auto& a, const auto& b){ return a.size() < b.size() ? true : false; })->size() + 5;
   const size_t col_num {_terminal_columns()/col_width};
-  std::string s("\n\r"); // New line and move cursor to left
+  std::string s("\n\r"); // New line and move cursor to left 
+  char seq[64];
+  snprintf(seq, 64, "\033[%d;1;49m", static_cast<int>(COLOR::BLUE));
+  std::error_code ec;
   for(size_t i=0; i<v.size(); ++i){
-    s.append(v[i]);
+    if(std::filesystem::is_directory(path.native() + "/" + v[i], ec)){
+      // A typical color code example : \033[31;1;4m 
+      //   \033[ : begin of color code, 31 : red color,  1 : bold,  4 : underlined
+      s.append(seq, strlen(seq));
+      s.append(v[i]);
+      s.append("\033[0m", 4);
+    }
+    else{
+      s.append(v[i]);
+    }
     if(i%col_num == col_num-1){
       s.append("\x1b[0K\n\r");
     }
@@ -781,12 +804,12 @@ inline void Prompt::_autocomplete_folder(){
                           _line.buf.substr(ws_index) : _user_home().native() + _line.buf.substr(ws_index+1));
 
   if(std::error_code ec; p.empty() or std::filesystem::is_directory(p, ec)){
-    s = _dump_files(_files_in_folder(p));
+    s = _dump_files(_files_in_folder(p), p);
   }
   else{
     auto match = _files_match_prefix(p);  
     if(not match.empty()){
-      s = _dump_files(match);
+      s = _dump_files(match, p.parent_path());
       if(auto suffix = _next_prefix(match, p.filename().native().size()); not suffix.empty()){
         _line.buf.insert(_line.cur_pos, suffix);
         _line.cur_pos += suffix.size();

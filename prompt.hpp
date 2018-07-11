@@ -747,12 +747,12 @@ inline int Prompt::_autocomplete_command(){
 // Procedure: _files_match_prefix
 // Find all the files in a folder that match the prefix
 std::vector<std::string> Prompt::_files_match_prefix(const std::filesystem::path& path) const {
-  // Need to check in case path is just a file namespace
+  // Need to check in case path is a file in current folder (parent_path = "")
   auto folder = path.filename() == path ? std::filesystem::current_path() : path.parent_path();
   std::string prefix(path.filename());
 
   std::vector<std::string> matches; 
-  if(std::error_code ec; std::filesystem::is_directory(folder, ec)){
+  if(std::error_code ec; _file_read_access(folder) and std::filesystem::is_directory(folder, ec)){
     for(const auto& p: std::filesystem::directory_iterator(folder)){
       std::string fname {p.path().filename()};
       if(fname.compare(0, prefix.size(), prefix) == 0){
@@ -770,11 +770,10 @@ std::vector<std::string> Prompt::_files_in_folder(const std::filesystem::path& p
   auto p = path.empty() ? std::filesystem::current_path() : path;
   std::vector<std::string> matches;
   // Check permission 
-  if(not _file_read_access(p)){
-    return matches;
-  }
-  for(const auto& p: std::filesystem::directory_iterator(p)){
-    matches.emplace_back(p.path().filename());
+  if(_file_read_access(p)){
+    for(const auto& p: std::filesystem::directory_iterator(p)){
+      matches.emplace_back(p.path().filename());
+    }
   }
   return matches;
 }

@@ -80,7 +80,7 @@ std::basic_istream<C, T>& read_line(std::basic_istream<C, T>& is, std::basic_str
 
     // TODO: unique_ptr to enable automatic memory management...
     struct Node{
-      std::list<std::pair<std::string, std::unique_ptr<Node>>> childs;
+      std::list<std::pair<std::string, std::unique_ptr<Node>>> siblings;
     };
 
     // TODO: unittest
@@ -123,7 +123,7 @@ std::basic_istream<C, T>& read_line(std::basic_istream<C, T>& is, std::basic_str
   }
 
   void RadixTree::_dump(Node* n, size_t level, std::string& s) {
-    for(auto &[k,v]: n->childs){
+    for(auto &[k,v]: n->siblings){
       assert(v.get() != nullptr);
       s.append(level, '-');
       s.append(1, ' ');
@@ -134,11 +134,11 @@ std::basic_istream<C, T>& read_line(std::basic_istream<C, T>& is, std::basic_str
   }
 
   void RadixTree::_collect_postfix(std::vector<std::string> &vec, const std::unique_ptr<Node>& n, const std::string& s) const {
-    if(n->childs.empty()){
+    if(n->siblings.empty()){
       vec.emplace_back(s);
     }
     else{
-      for(auto& [k,v]:n->childs){
+      for(auto& [k,v]:n->siblings){
         _collect_postfix(vec, v, s+k);
       }
     }
@@ -146,7 +146,7 @@ std::basic_istream<C, T>& read_line(std::basic_istream<C, T>& is, std::basic_str
 
   std::vector<std::string> RadixTree::all_words() const {
     std::vector<std::string> postfix;
-    for(auto &[k, v]: _root.childs){
+    for(auto &[k, v]: _root.siblings){
       _collect_postfix(postfix, v, k);
     }
     return postfix;
@@ -158,7 +158,7 @@ std::basic_istream<C, T>& read_line(std::basic_istream<C, T>& is, std::basic_str
     }
     else{
       std::vector<std::string> matches;
-      for(auto &[k, v]: prefix_node->childs){
+      for(auto &[k, v]: prefix_node->siblings){
         _collect_postfix(matches, v, prefix+suffix+k);
       }
       return matches;
@@ -171,7 +171,7 @@ std::basic_istream<C, T>& read_line(std::basic_istream<C, T>& is, std::basic_str
     std::string suffix {""};
     for(size_t pos=0; pos<s.size(); ){ // Search until full match
       bool match = {false};
-      for(const auto& [k, v]: n->childs){
+      for(const auto& [k, v]: n->siblings){
         if(auto num = _count_prefix_match(k, s.data()+pos); num>0){
           pos += num;
           if(pos == s.size()){
@@ -203,9 +203,9 @@ std::basic_istream<C, T>& read_line(std::basic_istream<C, T>& is, std::basic_str
   bool RadixTree::exist(const std::string& s) const {
     size_t pos {0};
     Node const *n = &_root;
-    while(not n->childs.empty()){ // Search until reaching the leaf
+    while(not n->siblings.empty()){ // Search until reaching the leaf
       bool match {false};
-      for(const auto& [k, v]: n->childs){
+      for(const auto& [k, v]: n->siblings){
         if(s.compare(pos, k.size(), k) == 0){
           pos += k.size();
           n = v.get();
@@ -230,8 +230,8 @@ std::basic_istream<C, T>& read_line(std::basic_istream<C, T>& is, std::basic_str
   // TODO: avoid create std::string from string_view
   void RadixTree::_insert(std::string_view sv, Node* n){
     size_t match_num {0};
-    auto ch = n->childs.begin();
-    for(auto &kv: n->childs){
+    auto ch = n->siblings.begin();
+    for(auto &kv: n->siblings){
       if(match_num = _count_prefix_match(std::get<0>(kv), sv); match_num > 0){
         break;
       }
@@ -239,8 +239,8 @@ std::basic_istream<C, T>& read_line(std::basic_istream<C, T>& is, std::basic_str
     }
 
     if(match_num == 0){   // Base case 1 
-      if(auto& child = std::get<std::unique_ptr<Node>>(n->childs.emplace_back(std::make_pair(sv, new Node))); sv.size() > 0){
-        child->childs.emplace_back(std::make_pair("", new Node));  // insert an empty string to denote end of key
+      if(auto& child = std::get<std::unique_ptr<Node>>(n->siblings.emplace_back(std::make_pair(sv, new Node))); sv.size() > 0){
+        child->siblings.emplace_back(std::make_pair("", new Node));  // insert an empty string to denote end of key
       }
     }
     else if(match_num == ch->first.size()){  // Keep searching along the child
@@ -248,13 +248,13 @@ std::basic_istream<C, T>& read_line(std::basic_istream<C, T>& is, std::basic_str
     }
     else{  // Base case 2
       // Split the child node into new nodes  
-      auto& par = std::get<std::unique_ptr<Node>>(n->childs.emplace_back(std::make_pair(std::string_view(sv.data(),match_num), new Node)));
-      par->childs.emplace_back(std::make_pair(ch->first.data()+match_num, std::move(ch->second)));
-      auto& rc = std::get<std::unique_ptr<Node>>(par->childs.emplace_back(std::make_pair(sv.data()+match_num, new Node)));
+      auto& par = std::get<std::unique_ptr<Node>>(n->siblings.emplace_back(std::make_pair(std::string_view(sv.data(),match_num), new Node)));
+      par->siblings.emplace_back(std::make_pair(ch->first.data()+match_num, std::move(ch->second)));
+      auto& rc = std::get<std::unique_ptr<Node>>(par->siblings.emplace_back(std::make_pair(sv.data()+match_num, new Node)));
       if(sv.size() > 0){
-        rc->childs.emplace_back(std::make_pair("", new Node));  // insert an empty string to denote end of key
+        rc->siblings.emplace_back(std::make_pair("", new Node));  // insert an empty string to denote end of key
       }
-      n->childs.erase(ch);
+      n->siblings.erase(ch);
     }
   }
 

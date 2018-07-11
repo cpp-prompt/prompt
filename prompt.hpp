@@ -3,8 +3,8 @@
 
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <termios.h>
 #include <sys/ioctl.h>
+#include <termios.h>
 #include <pwd.h>
 #include <errno.h>
 #include <unistd.h>
@@ -21,7 +21,6 @@
 #include <string_view>
 #include <experimental/filesystem>
 #include <cassert>
-#include <unordered_map>
 
 
 namespace std {

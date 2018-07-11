@@ -394,7 +394,7 @@ class Prompt {
 
 
     std::filesystem::path _user_home() const;
-    bool _file_read_access(const std::filesystem::path&) const;
+    bool _has_read_access(const std::filesystem::path&) const;
 
     // Key handling subroutine
     void _key_backspace(LineInfo&);
@@ -660,9 +660,9 @@ std::filesystem::path Prompt::_user_home() const{
 }
 
 
-// Procedure: _file_read_access 
+// Procedure: _has_read_access 
 // Check a file has read access grant to the user
-bool Prompt::_file_read_access(const std::filesystem::path &path) const {
+bool Prompt::_has_read_access(const std::filesystem::path &path) const {
   if(auto rval=::access(path.c_str(), F_OK); rval == 0){
     if(rval = ::access(path.c_str(), R_OK); rval == 0){
       return true;
@@ -751,7 +751,7 @@ std::vector<std::string> Prompt::_files_match_prefix(const std::filesystem::path
   std::string prefix(path.filename());
 
   std::vector<std::string> matches; 
-  if(std::error_code ec; _file_read_access(folder) and std::filesystem::is_directory(folder, ec)){
+  if(std::error_code ec; _has_read_access(folder) and std::filesystem::is_directory(folder, ec)){
     for(const auto& p: std::filesystem::directory_iterator(folder)){
       std::string fname {p.path().filename()};
       if(fname.compare(0, prefix.size(), prefix) == 0){
@@ -769,7 +769,7 @@ std::vector<std::string> Prompt::_files_in_folder(const std::filesystem::path& p
   auto p = path.empty() ? std::filesystem::current_path() : path;
   std::vector<std::string> matches;
   // Check permission 
-  if(_file_read_access(p)){
+  if(_has_read_access(p)){
     for(const auto& p: std::filesystem::directory_iterator(p)){
       matches.emplace_back(p.path().filename());
     }
@@ -1024,12 +1024,12 @@ inline void Prompt::_edit_line(std::string &s){
         continue;
       }
       else{
-        if(c=_autocomplete_command(); c==0){
-          continue;
-        }
-        else if(c < 0){
+        if(c=_autocomplete_command(); c<0){
           // something wrong happened
           return;
+        }
+        else if(c == 0){
+         continue;
         }
       }
     }
@@ -1144,13 +1144,13 @@ inline void Prompt::_refresh_single_line(LineInfo &l){
   size_t start {0};
 
   if(_prompt.length()+pos >= l.columns){
-    start += _prompt.length()+pos - l.columns -1;
-    len -= _prompt.length()+pos - l.columns -1;
-    pos += (_prompt.length()+pos - l.columns -1);
+    start += _prompt.length()+pos-l.columns-1;
+    len -= _prompt.length()+pos-l.columns-1;
+    pos += (_prompt.length()+pos-l.columns-1);
   }
 
   if(_prompt.length()+len > l.columns){
-    len -= (_prompt.length()+len - l.columns);
+    len -= (_prompt.length()+len-l.columns);
   }
 
   char seq[64];

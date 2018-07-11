@@ -79,7 +79,6 @@ std::basic_istream<C, T>& read_line(std::basic_istream<C, T>& is, std::basic_str
 
     // TODO: unique_ptr to enable automatic memory management...
     struct Node{
-      //std::list<std::pair<std::string, Node*>> childs;
       std::list<std::pair<std::string, std::unique_ptr<Node>>> childs;
     };
 
@@ -499,7 +498,7 @@ inline bool Prompt::_unsupported_term(){
 }
 
 // Procedure: readline 
-// This is the main entry of Prompt/
+// This is the main entry of Prompt
 inline bool Prompt::readline(std::string& s) {
   if(not ::isatty(_infd)) {
     // not a tty, either from file or pipe; we don't limit the line size

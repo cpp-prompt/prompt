@@ -508,6 +508,8 @@ inline bool Prompt::readline(std::string& s) {
   }
 }
 
+// Procedure: _save_orig_termios
+// Save the original termios for recovering before exit
 inline bool Prompt::_save_orig_termios(int fd){
   if(not _has_orig_termios){
     if(::tcgetattr(fd, &_orig_termios) == -1){
@@ -552,7 +554,7 @@ inline int Prompt::_get_cursor_pos(){
 
 
 
-// Procedure: _clear_screen (ctrl + l)
+// Procedure: _clear_screen (ctrl + l) 
 void Prompt::_clear_screen() {
   // https://en.wikipedia.org/wiki/ANSI_escape_code 
   // CSI n ;  m H : CUP - Cursor Position
@@ -593,7 +595,8 @@ inline bool Prompt::_set_raw_mode(){
 }
 
 
-// Procedure: _disable_raw_mode 
+// Procedure: _disable_raw_mode  
+// Recover the termios to the original mode
 inline void Prompt::_disable_raw_mode(){
   if(_has_orig_termios){
     ::tcsetattr(_infd, TCSAFLUSH, &_orig_termios);
@@ -631,6 +634,7 @@ inline size_t Prompt::_terminal_columns(){
 
 
 // Function: user_home
+// Return the home folder of user
 std::filesystem::path Prompt::_user_home() const{
   auto home = ::getenv("HOME");
   if(home == nullptr) {
@@ -639,6 +643,9 @@ std::filesystem::path Prompt::_user_home() const{
   return home ? home : std::filesystem::current_path();
 }
 
+
+// Procedure: _next_prefix
+// Find the prefix among a set of strings starting from position n
 std::string Prompt::_next_prefix(const std::vector<std::string>& words, const size_t n){
   if(words.empty()){
     return {};
@@ -660,6 +667,9 @@ std::string Prompt::_next_prefix(const std::vector<std::string>& words, const si
   }
 }
 
+
+// Procedure: _autocomplete_command
+// This is the main entry for command autocomplete
 inline int Prompt::_autocomplete_command(){
   if(auto words = _tree.match_prefix(_line.buf); words.empty()){
     return 0;
@@ -704,6 +714,9 @@ inline int Prompt::_autocomplete_command(){
   }
 }
 
+
+// Procedure: _files_match_prefix
+// Find all the files in a folder that match the prefix
 std::vector<std::string> Prompt::_files_match_prefix(const std::filesystem::path& path) const {
   // Need to check in case path is just a file namespace
   auto folder = path.filename() == path ? std::filesystem::current_path() : path.parent_path();
@@ -721,6 +734,9 @@ std::vector<std::string> Prompt::_files_match_prefix(const std::filesystem::path
   return matches;
 }
 
+
+// Procedure: _files_in_folder
+// List all files in a given folder
 std::vector<std::string> Prompt::_files_in_folder(const std::filesystem::path& path) const {
   auto p = path.empty() ? std::filesystem::current_path() : path;
   std::vector<std::string> matches;
@@ -731,7 +747,8 @@ std::vector<std::string> Prompt::_files_in_folder(const std::filesystem::path& p
 }
 
 
-// Function: _dump_files
+// Function: _dump_files 
+// Format the strings for pretty print in terminal.
 std::string Prompt::_dump_files(const std::vector<std::string>& v){
   if(v.empty()){
     return {};
@@ -754,6 +771,8 @@ std::string Prompt::_dump_files(const std::vector<std::string>& v){
 }
 
 
+// Procedure: _autocomplete_folder 
+// The entry for folder autocomplete
 inline void Prompt::_autocomplete_folder(){
   std::string s;
   size_t ws_index = _line.buf.rfind(' ', _line.cur_pos) + 1;
@@ -789,6 +808,8 @@ inline void Prompt::_autocomplete_folder(){
   _refresh_single_line(_line);
 }
 
+// Procedure: _key_delete_prev_word
+// Remove the word before cursor (including the whitespace between cursor and the word)
 inline void Prompt::_key_delete_prev_word(LineInfo& line){
   // Remove all whitespace before cursor
   auto iter = std::find_if_not(line.buf.rbegin()+line.buf.size()-line.cur_pos, line.buf.rend(), 
@@ -805,12 +826,16 @@ inline void Prompt::_key_delete_prev_word(LineInfo& line){
   line.cur_pos -= offset;
 }
 
+// Procedure: _key_delete 
+// Remove the character at cursor
 inline void Prompt::_key_delete(LineInfo &line){
   if(line.buf.size() > 0){
     line.buf.erase(line.cur_pos, 1);
   }
 }
 
+// Procedure: _key_backspace 
+// Remove the character before curosr
 inline void Prompt::_key_backspace(LineInfo &line){
   if(line.cur_pos > 0){
     line.buf.erase(line.cur_pos-1, 1);
@@ -818,14 +843,21 @@ inline void Prompt::_key_backspace(LineInfo &line){
   }
 }
 
+
+// Procedure: _key_prev_history
+// Set line buffer to previous command in history
 inline void Prompt::_key_prev_history(LineInfo& line){
   _key_history(line, true);
 }
 
+// Procedure: _key_next_history
+// Set line buffer to next command in history
 inline void Prompt::_key_next_history(LineInfo& line){
   _key_history(line, false);
 }
 
+// Procedure:_key_history
+// Set the line buffer to previous/next history command
 inline void Prompt::_key_history(LineInfo &line, bool prev){
   if(_history.size() > 1){
     *std::next(_history.begin(), _history.size()-1-line.history_trace) = line.buf;
@@ -844,6 +876,8 @@ inline void Prompt::_key_history(LineInfo &line, bool prev){
   }
 }
 
+// Procedure: _append_character
+// Insert a character to the cursor position in line buffer
 inline bool Prompt::_append_character(LineInfo& line, char c){
   try{
     line.buf.insert(line.cur_pos, 1, c);
@@ -922,7 +956,7 @@ inline bool Prompt::_key_handle_CSI(LineInfo& line){
 
 
 // Procedure: _edit_line 
-// Handle the input character 
+// Handle the character input from the user
 inline void Prompt::_edit_line(std::string &s){
   if(not (_cout << _prompt)){
     return;
@@ -1053,7 +1087,8 @@ inline void Prompt::_edit_line(std::string &s){
 }
 
 
-
+// Procedure: _refresh_single_line
+// Flush the current line buffer on screen
 inline void Prompt::_refresh_single_line(LineInfo &l){
   // 1. Append "move cursor to left" in the output buffer
   // 2. Append buf to output buffer

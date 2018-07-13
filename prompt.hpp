@@ -101,7 +101,6 @@ class RadixTree{
   public:
   
   struct Node {
-    // TODO: use a flag to represent a word
     bool is_word {false};
     std::list<std::pair<std::string, std::unique_ptr<Node>>> children;
   };
@@ -121,14 +120,9 @@ class RadixTree{
 
   private:
 
-   // TODO: adjust to multiple lines each less than 100 columns...
-
    Node _root;
    void _insert(std::string_view, Node*);
 
-   // TODO: use Node& (prefer object -> reference -> smart pointer >>>>>>>> raw ptr...)
-   // why not just use _match_prefix but with overload
-   //void _collect_postfix(std::vector<std::string>&, const std::unique_ptr<Node>&, const std::string&) const;
    void _match_prefix(std::vector<std::string>&, const Node&, const std::string&) const;
   
    std::pair<const Node*, std::string> _search_prefix_node(std::string_view) const;
@@ -177,13 +171,11 @@ inline void RadixTree::_match_prefix(
   const std::string& s
 ) const {
 
-  if(n.children.empty()){
+  if(n.is_word){
     vec.emplace_back(s);
   }
-  else{
-    for(auto& [k,v]:n.children){
-      _match_prefix(vec, *v, s+k);
-    }
+  for(auto& [k,v]:n.children){
+    _match_prefix(vec, *v, s+k);
   }
 }
 
@@ -250,11 +242,19 @@ bool RadixTree::exist(const std::string& s) const {
   while(not n->children.empty()){ // Search until reaching the leaf
     bool match {false};
     for(const auto& [k, v]: n->children){
-      if(s.compare(pos, k.size(), k) == 0){
-        pos += k.size();
-        n = v.get();
-        match = true;
-        break;
+      auto match_num = count_prefix_match(k, s.data()+pos);
+      if(match_num > 0){
+        if(pos += match_num; pos == s.size()){
+           if(match_num == k.size() and v->is_word){
+             return true;
+           }
+           return false;
+        }
+        else{
+          n = v.get();
+          match = true;
+          break;
+        }
       }
     }
     if(not match){
@@ -289,27 +289,41 @@ inline void RadixTree::_insert(std::string_view sv, Node* n){
   if(match_num == 0){   // Base case 1 
     if(auto& child = std::get<1>(n->children.emplace_back(std::make_pair(sv, new Node))); 
        sv.size() > 0){
-      // insert an empty string to denote end of key
-      child->children.emplace_back(std::make_pair("", new Node));  
+      child->is_word = true;
     }
   }
   else if(match_num == ch->first.size()){  
-    // Keep searching along the child
-    _insert(sv.data()+match_num, ch->second.get());
+    // Keep searching along the child 
+    if(match_num != sv.size()){
+      _insert(sv.data()+match_num, ch->second.get());
+    }
+    else{
+      ch->second->is_word = true;
+    }
   }
   else{  // Base case 2
     // Split the child node into new nodes  
     auto& par = std::get<1>(
         n->children.emplace_back(std::make_pair(std::string_view(sv.data(),match_num), new Node))
     );
-    par->children.emplace_back(std::make_pair(ch->first.data()+match_num, std::move(ch->second)));
-    auto& rc = std::get<1>(
-        par->children.emplace_back(std::make_pair(sv.data()+match_num, new Node))
-    );
-    if(sv.size() > 0){
-      // insert an empty string to denote end of key
-      rc->children.emplace_back(std::make_pair("", new Node));  
+
+    if(match_num != ch->first.size()){
+      par->children.emplace_back(std::make_pair(ch->first.data()+match_num, std::move(ch->second)));
     }
+    else{
+      par->is_word = true;
+    }
+
+    if(match_num != sv.size()){
+      auto& rc = std::get<1>(
+          par->children.emplace_back(std::make_pair(sv.data()+match_num, new Node))
+      );
+      rc->is_word = true;
+    }
+    else{
+      par->is_word = true;
+    }
+
     n->children.erase(ch);
   }
 }

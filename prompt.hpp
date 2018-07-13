@@ -29,12 +29,17 @@ namespace filesystem = experimental::filesystem;
 
 };
 
-namespace ot {
+namespace prompt {
+
+
 
 // Procedure: read_line
 // Read one line from an input stream
 template <typename C, typename T, typename A>
-std::basic_istream<C, T>& read_line(std::basic_istream<C, T>& is, std::basic_string<C, T, A>& line) {
+std::basic_istream<C, T>& read_line(
+  std::basic_istream<C, T>& is, 
+  std::basic_string<C, T, A>& line
+) {
 
   line.clear();
 
@@ -75,190 +80,208 @@ std::basic_istream<C, T>& read_line(std::basic_istream<C, T>& is, std::basic_str
   return is;
 }
 
+// ------------------------------------------------------------------------------------------------
 
-  class RadixTree{
+// Class: RadixTree
+class RadixTree{
 
-    // TODO: unique_ptr to enable automatic memory management...
-    struct Node{
-      std::list<std::pair<std::string, std::unique_ptr<Node>>> siblings;
-    };
+  public:
+  
+  struct Node {
+    // TODO: use a flag to represent a word
+    bool is_word {false};
 
-    // TODO: unittest
-    // check for each node no pariwise edges have common prefix
-
-    public:
-
-     RadixTree() = default;
-     RadixTree(const std::vector<std::string>&);
-     
-     bool exist(const std::string&) const;
-     void insert(const std::string&);
-    
-     std::vector<std::string> match_prefix(const std::string&) const;
-     std::vector<std::string> all_words() const;
-     std::string dump();
-
-    private:
-
-     Node _root;
-     void _insert(std::string_view, Node*);
-     void _collect_postfix(std::vector<std::string>&, const std::unique_ptr<Node>&, const std::string&) const;
-     size_t _count_prefix_match(std::string_view, std::string_view) const;
-     std::pair<const Node*, std::string> _search_prefix_node(std::string_view) const;
-
-     void _dump(Node*, size_t, std::string&);
+    std::list<std::pair<std::string, std::unique_ptr<Node>>> children;
   };
 
-  RadixTree::RadixTree(const std::vector<std::string>& words){
-    for(const auto& w: words){
-      insert(w);
+   RadixTree() = default;
+   RadixTree(const std::vector<std::string>&);
+   
+   bool exist(const std::string&) const;
+   void insert(const std::string&);
+  
+   std::vector<std::string> match_prefix(const std::string&) const;
+   std::vector<std::string> all_words() const;
+   std::string dump();
+
+   // TODO: unittest:  check for each node no children can have the same prefix...
+   const Node& root() const;
+
+  private:
+
+   // TODO: adjust to multiple lines each less than 100 columns...
+
+   Node _root;
+   void _insert(std::string_view, Node*);
+
+   // TODO: rename postfix to suffix 
+   // TODO: use Node& (prefer object -> reference -> smart pointer >>>>>>>> raw ptr...)
+   // why not just use _match_prefix but with overload
+   void _collect_postfix(std::vector<std::string>&, const std::unique_ptr<Node>&, const std::string&) const;
+  
+   // TODO: add to utility
+   size_t _count_prefix_match(std::string_view, std::string_view) const;
+
+   std::pair<const Node*, std::string> _search_prefix_node(std::string_view) const;
+
+   void _dump(Node*, size_t, std::string&);
+};
+
+RadixTree::RadixTree(const std::vector<std::string>& words){
+  for(const auto& w: words){
+    insert(w);
+  }
+}
+
+std::string RadixTree::dump() {
+  std::string t;
+  _dump(&_root, 0, t);      
+  t.append(1, '\n');
+  return t;
+}
+
+void RadixTree::_dump(Node* n, size_t level, std::string& s) {
+  for(auto &[k,v]: n->children){
+    assert(v.get() != nullptr);
+    s.append(level, '-');
+    s.append(1, ' ');
+    s += k;
+    s.append(1, '\n');
+    _dump(v.get(), level+1, s);
+  }
+}
+
+void RadixTree::_collect_postfix(
+  std::vector<std::string> &vec, 
+  const std::unique_ptr<Node>& n, 
+  const std::string& s
+) const {
+
+  if(n->children.empty()){
+    vec.emplace_back(s);
+  }
+  else{
+    for(auto& [k,v]:n->children){
+      _collect_postfix(vec, v, s+k);
     }
   }
+}
 
-  std::string RadixTree::dump() {
-    std::string t;
-    _dump(&_root, 0, t);      
-    t.append(1, '\n');
-    return t;
+std::vector<std::string> RadixTree::all_words() const {
+  std::vector<std::string> postfix;
+  for(auto &[k, v]: _root.children){
+    _collect_postfix(postfix, v, k);
   }
+  return postfix;
+}
 
-  void RadixTree::_dump(Node* n, size_t level, std::string& s) {
-    for(auto &[k,v]: n->siblings){
-      assert(v.get() != nullptr);
-      s.append(level, '-');
-      s.append(1, ' ');
-      s += k;
-      s.append(1, '\n');
-      _dump(v.get(), level+1, s);
-    }
+std::vector<std::string> RadixTree::match_prefix(const std::string& prefix) const {
+  if(auto [prefix_node, suffix] = _search_prefix_node(prefix); prefix_node == nullptr){
+    return {};
   }
-
-  void RadixTree::_collect_postfix(std::vector<std::string> &vec, const std::unique_ptr<Node>& n, const std::string& s) const {
-    if(n->siblings.empty()){
-      vec.emplace_back(s);
+  else{
+    std::vector<std::string> matches;
+    for(auto &[k, v]: prefix_node->children){
+      _collect_postfix(matches, v, prefix+suffix+k);
     }
-    else{
-      for(auto& [k,v]:n->siblings){
-        _collect_postfix(vec, v, s+k);
-      }
-    }
+    return matches;
   }
-
-  std::vector<std::string> RadixTree::all_words() const {
-    std::vector<std::string> postfix;
-    for(auto &[k, v]: _root.siblings){
-      _collect_postfix(postfix, v, k);
-    }
-    return postfix;
-  }
-
-  std::vector<std::string> RadixTree::match_prefix(const std::string& prefix) const {
-    if(auto [prefix_node, suffix] = _search_prefix_node(prefix); prefix_node == nullptr){
-      return {};
-    }
-    else{
-      std::vector<std::string> matches;
-      for(auto &[k, v]: prefix_node->siblings){
-        _collect_postfix(matches, v, prefix+suffix+k);
-      }
-      return matches;
-    }
-  }
+}
 
 
-  std::pair<const RadixTree::Node*,std::string> RadixTree::_search_prefix_node(std::string_view s) const {
-    Node const *n = &_root;
-    std::string suffix {""};
-    for(size_t pos=0; pos<s.size(); ){ // Search until full match
-      bool match = {false};
-      for(const auto& [k, v]: n->siblings){
-        if(auto num = _count_prefix_match(k, s.data()+pos); num>0){
-          pos += num;
-          if(pos == s.size()){
-            suffix = k.substr(num, k.size()-num);
-          }
-          n = v.get();
-          match = true;
-          break;
+std::pair<const RadixTree::Node*,std::string> RadixTree::_search_prefix_node(std::string_view s) const {
+  Node const *n = &_root;
+  std::string suffix {""};
+  for(size_t pos=0; pos<s.size(); ){ // Search until full match
+    bool match = {false};
+    for(const auto& [k, v]: n->children){
+      if(auto num = _count_prefix_match(k, s.data()+pos); num>0){
+        pos += num;
+        if(pos == s.size()){
+          suffix = k.substr(num, k.size()-num);
         }
-      }
-      if(not match){
-        return {nullptr, suffix};
-      }
-    }
-    return {n, suffix};
-  }
-
-  size_t RadixTree::_count_prefix_match(std::string_view sv1, std::string_view sv2) const {
-    size_t i {0};
-    size_t len {std::min(sv1.size(), sv2.size())};
-    for( ;i<len; ++i){
-      if(sv1[i] != sv2[i]){
+        n = v.get();
+        match = true;
         break;
       }
     }
-    return i;
-  }
-
-  bool RadixTree::exist(const std::string& s) const {
-    size_t pos {0};
-    Node const *n = &_root;
-    while(not n->siblings.empty()){ // Search until reaching the leaf
-      bool match {false};
-      for(const auto& [k, v]: n->siblings){
-        if(s.compare(pos, k.size(), k) == 0){
-          pos += k.size();
-          n = v.get();
-          match = true;
-          break;
-        }
-      }
-      if(not match){
-        return false;
-      }
+    if(not match){
+      return {nullptr, suffix};
     }
-    return true;
   }
+  return {n, suffix};
+}
 
-  void RadixTree::insert(const std::string& s){
-    if(s.empty()){  // Empty string not allowed
-      return;
+size_t RadixTree::_count_prefix_match(std::string_view sv1, std::string_view sv2) const {
+  size_t i {0};
+  size_t len {std::min(sv1.size(), sv2.size())};
+  for( ;i<len; ++i){
+    if(sv1[i] != sv2[i]){
+      break;
     }
-    _insert(s, &_root);
   }
-	
-  // TODO: avoid create std::string from string_view
-  void RadixTree::_insert(std::string_view sv, Node* n){
-    size_t match_num {0};
-    auto ch = n->siblings.begin();
-    for(auto &kv: n->siblings){
-      if(match_num = _count_prefix_match(std::get<0>(kv), sv); match_num > 0){
+  return i;
+}
+
+bool RadixTree::exist(const std::string& s) const {
+  size_t pos {0};
+  Node const *n = &_root;
+  while(not n->children.empty()){ // Search until reaching the leaf
+    bool match {false};
+    for(const auto& [k, v]: n->children){
+      if(s.compare(pos, k.size(), k) == 0){
+        pos += k.size();
+        n = v.get();
+        match = true;
         break;
       }
-      ch ++;
     }
-
-    if(match_num == 0){   // Base case 1 
-      if(auto& child = std::get<std::unique_ptr<Node>>(n->siblings.emplace_back(std::make_pair(sv, new Node))); sv.size() > 0){
-        child->siblings.emplace_back(std::make_pair("", new Node));  // insert an empty string to denote end of key
-      }
-    }
-    else if(match_num == ch->first.size()){  // Keep searching along the child
-      _insert(sv.data()+match_num, ch->second.get());
-    }
-    else{  // Base case 2
-      // Split the child node into new nodes  
-      auto& par = std::get<std::unique_ptr<Node>>(n->siblings.emplace_back(std::make_pair(std::string_view(sv.data(),match_num), new Node)));
-      par->siblings.emplace_back(std::make_pair(ch->first.data()+match_num, std::move(ch->second)));
-      auto& rc = std::get<std::unique_ptr<Node>>(par->siblings.emplace_back(std::make_pair(sv.data()+match_num, new Node)));
-      if(sv.size() > 0){
-        rc->siblings.emplace_back(std::make_pair("", new Node));  // insert an empty string to denote end of key
-      }
-      n->siblings.erase(ch);
+    if(not match){
+      return false;
     }
   }
+  return true;
+}
 
+void RadixTree::insert(const std::string& s){
+  if(s.empty()){  // Empty string not allowed
+    return;
+  }
+  _insert(s, &_root);
+}
 
+// TODO: avoid create std::string from string_view
+void RadixTree::_insert(std::string_view sv, Node* n){
+  size_t match_num {0};
+  auto ch = n->children.begin();
+  for(auto &kv: n->children){
+    if(match_num = _count_prefix_match(std::get<0>(kv), sv); match_num > 0){
+      break;
+    }
+    ch ++;
+  }
+
+  if(match_num == 0){   // Base case 1 
+    if(auto& child = std::get<std::unique_ptr<Node>>(n->children.emplace_back(std::make_pair(sv, new Node))); sv.size() > 0){
+      child->children.emplace_back(std::make_pair("", new Node));  // insert an empty string to denote end of key
+    }
+  }
+  else if(match_num == ch->first.size()){  // Keep searching along the child
+    _insert(sv.data()+match_num, ch->second.get());
+  }
+  else{  // Base case 2
+    // Split the child node into new nodes  
+    auto& par = std::get<std::unique_ptr<Node>>(n->children.emplace_back(std::make_pair(std::string_view(sv.data(),match_num), new Node)));
+    par->children.emplace_back(std::make_pair(ch->first.data()+match_num, std::move(ch->second)));
+    auto& rc = std::get<std::unique_ptr<Node>>(par->children.emplace_back(std::make_pair(sv.data()+match_num, new Node)));
+    if(sv.size() > 0){
+      rc->children.emplace_back(std::make_pair("", new Node));  // insert an empty string to denote end of key
+    }
+    n->children.erase(ch);
+  }
+}
+
+// ------------------------------------------------------------------------------------------------
 
 
 // http://www.physics.udel.edu/~watson/scen103/ascii.html
@@ -302,7 +325,7 @@ class Prompt {
 
   struct LineInfo{
     LineInfo(size_t);
-		
+    
     std::string buf;
     size_t history_trace {0};
     size_t cur_pos {0};   // cursor position
@@ -343,7 +366,7 @@ class Prompt {
     const std::string EL {"\x1b[0K"};   // Erase in Line (clear from cursor to the end of the line)
 
   private: 
-	
+  
     std::string _prompt;  
     std::istream& _cin;
     std::ostream& _cout;
@@ -703,7 +726,7 @@ inline int Prompt::_autocomplete_command(){
     return 0;
   }
   else{
-    char c {0};	
+    char c {0}; 
     bool stop {false};
     for(size_t i=0; not stop;){
       if(i < words.size()){

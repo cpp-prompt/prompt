@@ -1,7 +1,7 @@
 #include "prompt.hpp"
 
 int main(){
-  ot::Prompt shell("ot> "); 
+  prompt::Prompt shell("ot> "); 
 
   shell.autocomplete("read_celllib");
   shell.autocomplete("asia");

@@ -148,7 +148,6 @@ inline std::string RadixTree::dump() {
   return t;
 }
 
-
 // Procedure: _dump 
 // Recursively traverse the tree and append each level to string
 inline void RadixTree::_dump(Node* n, size_t level, std::string& s) {
@@ -161,7 +160,6 @@ inline void RadixTree::_dump(Node* n, size_t level, std::string& s) {
     _dump(v.get(), level+1, s);
   }
 }
-
 
 // Procedure: _match_prefix 
 // Find all words that match the given prefix
@@ -179,7 +177,6 @@ inline void RadixTree::_match_prefix(
   }
 }
 
-
 // Procedure: all_words 
 // Extract all words in the radix tree
 inline std::vector<std::string> RadixTree::all_words() const {
@@ -189,7 +186,6 @@ inline std::vector<std::string> RadixTree::all_words() const {
   }
   return words;
 }
-
 
 // Procedure: match_prefix 
 // Collect all words that match the given prefix
@@ -205,7 +201,6 @@ inline std::vector<std::string> RadixTree::match_prefix(const std::string& prefi
     return matches;
   }
 }
-
 
 // Procedure: _search_prefix_node 
 // Find the node that matches the given prefix
@@ -232,8 +227,6 @@ std::pair<const RadixTree::Node*,std::string> RadixTree::_search_prefix_node(std
   return {n, suffix};
 }
 
-
-
 // Procedure: exist 
 // Check the given word in the radix tree or not
 bool RadixTree::exist(const std::string& s) const {
@@ -248,20 +241,19 @@ bool RadixTree::exist(const std::string& s) const {
            if(match_num == k.size() and v->is_word){
              return true;
            }
-           return false;
         }
         else{
           n = v.get();
           match = true;
-          break;
         }
+        break;
       }
     }
     if(not match){
       return false;
     }
   }
-  return true;
+  return false;
 }
 
 // Procedure: insert 
@@ -969,7 +961,6 @@ inline void Prompt::_key_backspace(LineInfo &line){
     line.cur_pos--;
   }
 }
-
 
 // Procedure: _key_prev_history
 // Set line buffer to previous command in history

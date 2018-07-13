@@ -14,12 +14,15 @@ int main(){
   //}
   //return 0;
 
+
   for(;;){
     shell.readline(line);
     std::cout << "line = " << line << std::endl;
+    shell.add_history(line);
     // Hit enter to exit
     if(line.empty()){
       break;
     }
   }
+  shell.save_history("simple_history");
 }

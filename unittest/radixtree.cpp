@@ -30,7 +30,7 @@ TEST_CASE("RadixTree") {
 
   srand(time(nullptr));
 
-  ot::RadixTree tree;
+  prompt::RadixTree tree;
   const size_t word_num {500000};
   const size_t range {20};
 

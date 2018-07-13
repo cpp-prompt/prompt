@@ -115,7 +115,6 @@ class RadixTree{
    std::vector<std::string> all_words() const;
    std::string dump();
 
-   // TODO: unittest:  check for each node no children can have the same prefix...
    const Node& root() const;
 
   private:

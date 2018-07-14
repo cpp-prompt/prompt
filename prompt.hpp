@@ -381,7 +381,6 @@ enum class COLOR{
 class Prompt {
 
   struct LineInfo{
-    LineInfo(size_t);
     
     std::string buf;
     size_t history_trace {0};
@@ -459,8 +458,8 @@ class Prompt {
 
     void _refresh_single_line(LineInfo&);
 
-    LineInfo _line {_terminal_columns()};
-    LineInfo _line_save {_terminal_columns()};
+    LineInfo _line;
+    LineInfo _line_save;
 
     int _autocomplete_command();
 
@@ -488,8 +487,6 @@ class Prompt {
     bool _append_character(LineInfo&, char);
 };
 
-inline Prompt::LineInfo::LineInfo(size_t cols): columns(cols){
-}
 
 // Copy assignment
 inline void Prompt::LineInfo::operator = (const LineInfo& l){
@@ -511,7 +508,12 @@ inline Prompt::Prompt(
   _cout(out),
   _cerr(err),
   _infd(infd)
-{}
+{
+  if(::isatty(_infd)){
+    _line.columns = _terminal_columns();
+    _line_save.columns = _line.columns;
+  }
+}
 
 // Procedure: Dtor
 inline Prompt::~Prompt(){
@@ -558,6 +560,10 @@ inline void Prompt::save_history(const std::filesystem::path& p){
 // Procedure: add_history 
 // Add command to history list
 inline void Prompt::add_history(const std::string &hist){
+  // hist cannot be empty and cannot be the same as the last one
+  if(hist.empty() or (not _history.empty() and _history.back() == hist)){
+    return ;
+  }
   if(_history.size() == _max_history_size){
     _history.pop_front();
   }
@@ -608,7 +614,7 @@ inline bool Prompt::readline(std::string& s) {
     _edit_line(s);
     _disable_raw_mode();
     std::cout << '\n';
-    return true;
+    return errno == EAGAIN ? false : true;
   }
 }
 
@@ -1112,7 +1118,7 @@ inline void Prompt::_edit_line(std::string &s){
     return;
   }
 
-  add_history("");
+  _history.emplace_back("");
   _line.reset();
   s.clear();
   for(char c;;){

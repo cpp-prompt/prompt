@@ -1,5 +1,27 @@
-#ifndef __PROMPT_H
-#define __PROMPT_H
+//  MIT License
+//  
+//  Copyright (c) 2018 Chun-Xun Lin, Tsung-Wei Huang and Martin D. F. Wong
+//  
+//  Permission is hereby granted, free of charge, to any person obtaining a copy
+//  of this software and associated documentation files (the "Software"), to deal
+//  in the Software without restriction, including without limitation the rights
+//  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+//  copies of the Software, and to permit persons to whom the Software is
+//  furnished to do so, subject to the following conditions:
+//  
+//  The above copyright notice and this permission notice shall be included in all
+//  copies or substantial portions of the Software.
+//  
+//  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+//  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+//  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+//  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+//  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+//  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+//  SOFTWARE.
+
+#ifndef PROMPT_HPP_
+#define PROMPT_HPP_
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -8,7 +30,6 @@
 #include <pwd.h>
 #include <errno.h>
 #include <unistd.h>
-
 #include <algorithm>
 #include <unistd.h>
 #include <sstream>
@@ -29,9 +50,9 @@ namespace filesystem = experimental::filesystem;
 
 };
 
+// ------------------------------------------------------------------------------------------------
+
 namespace prompt {
-
-
 
 // Procedure: read_line
 // Read one line from an input stream
@@ -82,11 +103,11 @@ std::basic_istream<C, T>& read_line(
 
 // ------------------------------------------------------------------------------------------------
 
-
-inline size_t count_prefix_match(std::string_view s1, std::string_view s2){
+// Function: count_prefix
+constexpr size_t count_prefix(std::string_view s1, std::string_view s2){
   size_t i {0};
   size_t len {std::min(s1.size(), s2.size())};
-  for( ;i<len; ++i){
+  for(; i<len; ++i){
     if(s1[i] != s2[i]){
       break;
     }
@@ -94,6 +115,7 @@ inline size_t count_prefix_match(std::string_view s1, std::string_view s2){
   return i;
 }
 
+// ------------------------------------------------------------------------------------------------
 
 // Class: RadixTree
 class RadixTree{
@@ -108,25 +130,24 @@ class RadixTree{
    RadixTree() = default;
    RadixTree(const std::vector<std::string>&);
    
-   bool exist(const std::string&) const;
+   bool exist(std::string_view) const;
    void insert(const std::string&);
   
    std::vector<std::string> match_prefix(const std::string&) const;
    std::vector<std::string> all_words() const;
-   std::string dump();
+   std::string dump() const;
 
    const Node& root() const;
 
   private:
 
    Node _root;
-   void _insert(std::string_view, Node*);
 
+   void _insert(std::string_view, Node&);
    void _match_prefix(std::vector<std::string>&, const Node&, const std::string&) const;
+   void _dump(const Node&, size_t, std::string&) const;
   
    std::pair<const Node*, std::string> _search_prefix_node(std::string_view) const;
-
-   void _dump(Node*, size_t, std::string&);
 };
 
 
@@ -140,23 +161,22 @@ inline RadixTree::RadixTree(const std::vector<std::string>& words){
 
 // Procedure: dump 
 // Dump the radix tree into a string
-inline std::string RadixTree::dump() {
+inline std::string RadixTree::dump() const {
   std::string t;
-  _dump(&_root, 0, t);      
+  _dump(_root, 0, t);      
   t.append(1, '\n');
   return t;
 }
 
 // Procedure: _dump 
 // Recursively traverse the tree and append each level to string
-inline void RadixTree::_dump(Node* n, size_t level, std::string& s) {
-  for(auto &[k,v]: n->children){
-    assert(v.get() != nullptr);
+inline void RadixTree::_dump(const Node& n, size_t level, std::string& s) const {
+  for(auto &[k,v]: n.children){
     s.append(level, '-');
     s.append(1, ' ');
     s += k;
     s.append(1, '\n');
-    _dump(v.get(), level+1, s);
+    _dump(*v, level+1, s);
   }
 }
 
@@ -203,13 +223,16 @@ inline std::vector<std::string> RadixTree::match_prefix(const std::string& prefi
 
 // Procedure: _search_prefix_node 
 // Find the node that matches the given prefix
-std::pair<const RadixTree::Node*,std::string> RadixTree::_search_prefix_node(std::string_view s) const {
+inline std::pair<const RadixTree::Node*,std::string> RadixTree::_search_prefix_node(
+  std::string_view s
+) const {
+
   Node const *n = &_root;
   std::string suffix {""};
   for(size_t pos=0; pos<s.size(); ){ // Search until full match
     bool match = {false};
     for(const auto& [k, v]: n->children){
-      if(auto num = count_prefix_match(k, s.data()+pos); num>0){
+      if(auto num = count_prefix(k, s.data()+pos); num>0){
         pos += num;
         if(pos == s.size()){
           suffix = k.substr(num, k.size()-num);
@@ -227,19 +250,20 @@ std::pair<const RadixTree::Node*,std::string> RadixTree::_search_prefix_node(std
 }
 
 // Procedure: exist 
-// Check the given word in the radix tree or not
-bool RadixTree::exist(const std::string& s) const {
+// Check whether the given word is in the radix tree or not
+inline bool RadixTree::exist(std::string_view s) const {
+
   size_t pos {0};
   Node const *n = &_root;
   while(not n->children.empty()){ // Search until reaching the leaf
     bool match {false};
     for(const auto& [k, v]: n->children){
-      auto match_num = count_prefix_match(k, s.data()+pos);
+      auto match_num = count_prefix(k, s.data()+pos);
       if(match_num > 0){
         if(pos += match_num; pos == s.size()){
-           if(match_num == k.size() and v->is_word){
-             return true;
-           }
+          if(match_num == k.size() and v->is_word){
+            return true;
+          }
         }
         else{
           n = v.get();
@@ -261,61 +285,52 @@ inline void RadixTree::insert(const std::string& s){
   if(s.empty()){  // Empty string not allowed
     return;
   }
-  _insert(s, &_root);
+  _insert(s, _root);
 }
-
 
 // Procedure: _insert 
 // Insert a word into radix tree
-inline void RadixTree::_insert(std::string_view sv, Node* n){
-  size_t match_num {0};
-  auto ch = n->children.begin();
-  for(auto &kv: n->children){
-    if(match_num = count_prefix_match(std::get<0>(kv), sv); match_num > 0){
-      break;
-    }
-    ch ++;
+inline void RadixTree::_insert(std::string_view sv, Node& n){
+
+  // base case
+  if(sv.empty()) {
+    n.is_word = true;
+    return;
   }
+
+  size_t match_num {0};
+
+  auto itr = std::find_if(n.children.begin(), n.children.end(), [&] (const auto& kv) {
+    if(match_num = count_prefix(std::get<0>(kv), sv); match_num > 0) {
+      return true;
+    }
+    else return false;
+  });
 
   if(match_num == 0){   // Base case 1 
-    if(auto& child = std::get<1>(n->children.emplace_back(std::make_pair(sv, new Node))); 
-       sv.size() > 0){
-      child->is_word = true;
-    }
+    assert(itr == n.children.end());
+    auto& child = std::get<1>(n.children.emplace_back(std::make_pair(sv, new Node))); 
+    child->is_word = true;
   }
-  else if(match_num == ch->first.size()){  
-    // Keep searching along the child 
-    if(match_num != sv.size()){
-      _insert(sv.data()+match_num, ch->second.get());
+  else {
+    
+    if(match_num == itr->first.size()) {
+      _insert(sv.data() + match_num, *itr->second);
     }
-    else{
-      ch->second->is_word = true;
-    }
-  }
-  else{  // Base case 2
-    // Split the child node into new nodes  
-    auto& par = std::get<1>(
-        n->children.emplace_back(std::make_pair(std::string_view(sv.data(),match_num), new Node))
-    );
-
-    if(match_num != ch->first.size()){
-      par->children.emplace_back(std::make_pair(ch->first.data()+match_num, std::move(ch->second)));
-    }
-    else{
-      par->is_word = true;
-    }
-
-    if(match_num != sv.size()){
-      auto& rc = std::get<1>(
-          par->children.emplace_back(std::make_pair(sv.data()+match_num, new Node))
+    else {
+    
+      auto& par = std::get<1>(n.children.emplace_back(
+        std::make_pair(std::string_view{sv.data(), match_num}, new Node))
       );
-      rc->is_word = true;
-    }
-    else{
-      par->is_word = true;
-    }
 
-    n->children.erase(ch);
+      par->children.emplace_back(
+        std::make_pair(itr->first.data()+match_num, std::move(itr->second))
+      );
+
+      n.children.erase(itr);
+      
+      _insert(sv.data() + match_num, *par);
+    }
   }
 }
 
@@ -363,9 +378,6 @@ enum class COLOR{
   WHITE
 };
 
-
-
-// TODO: make Prompt templated at Tree
 class Prompt {
 
   struct LineInfo{
@@ -407,7 +419,7 @@ class Prompt {
     void autocomplete(const std::string&);
 
     const std::string CR {"\r"};       // Carriage Return (set cursor to left)
-    const std::string EL {"\x1b[0K"};   // Erase in Line (clear from cursor to the end of the line)
+    const std::string EL {"\x1b[0K"};  // Erase in Line (clear from cursor to the end of the line)
 
   private: 
   
@@ -415,10 +427,13 @@ class Prompt {
     std::istream& _cin;
     std::ostream& _cout;
     std::ostream& _cerr;
-
+    
     int _infd;
-
+    
     RadixTree _tree;
+  
+    std::string _obuf;
+
 
     bool _unsupported_term();
     void _stdin_not_tty(std::string &);
@@ -430,7 +445,7 @@ class Prompt {
     std::list<std::string> _history;
 
     // Unsupported terminals 
-    const std::vector<std::string> _unsupported_terms {"dumb", "cons25", "emacs"};
+
 
     termios _orig_termios;
     bool _has_orig_termios {false};
@@ -558,14 +573,20 @@ inline void Prompt::_stdin_not_tty(std::string& s){
 // Procedure: _unsupported_term
 // Check the terminal is supported or not
 inline bool Prompt::_unsupported_term(){
+    
+  static auto _unsupported_terms = {"dumb", "cons25", "emacs"};
+
   if(char* term = getenv("TERM"); term == NULL){
+    return false;
   }
   else if(std::string_view str(term); 
           std::find(_unsupported_terms.begin(), 
-                    _unsupported_terms.end()  , str) != _unsupported_terms.end()){
+                    _unsupported_terms.end() , str) != _unsupported_terms.end()){
     return true;
   }
-  return false;
+  else {
+    return false;
+  }
 }
 
 // Procedure: readline 
@@ -834,7 +855,9 @@ inline std::vector<std::string> Prompt::_files_match_prefix(
 
 // Procedure: _files_in_folder
 // List all files in a given folder
-inline std::vector<std::string> Prompt::_files_in_folder(const std::filesystem::path& path) const {
+inline std::vector<std::string> Prompt::_files_in_folder(
+  const std::filesystem::path& path
+) const {
   auto p = path.empty() ? std::filesystem::current_path() : path;
   std::vector<std::string> matches;
   // Check permission 
@@ -850,53 +873,62 @@ inline std::vector<std::string> Prompt::_files_in_folder(const std::filesystem::
 // Procedure: _dump_files 
 // Format the strings for pretty print in terminal.
 inline std::string Prompt::_dump_files(
-    const std::vector<std::string>& v, 
-    const std::filesystem::path& path)
+  const std::vector<std::string>& v, 
+  const std::filesystem::path& path)
 {
   if(v.empty()){
     return {};
   }
 
   const size_t col_width = std::max_element(v.begin(), v.end(), 
-                    [](const auto& a, const auto& b){ 
-                    return a.size() < b.size() ? true : false; })->size() + 5;
-  const size_t col_num {_terminal_columns()/col_width};
-  std::string s("\n\r"); // New line and move cursor to left 
+    [](const auto& a, const auto& b){ 
+      return a.size() < b.size();
+    }
+  )->size() + 4;
+
+  auto col_num = std::max(size_t{1}, _terminal_columns() / col_width);
+
+  std::string s;
+
   char seq[64];
   snprintf(seq, 64, "\033[%d;1;49m", static_cast<int>(COLOR::BLUE));
   std::error_code ec;
   for(size_t i=0; i<v.size(); ++i){
+
+    if(i % col_num == 0) {
+      s.append("\n\r\x1b[0K");
+    }
+
     if(std::filesystem::is_directory(path.native() + "/" + v[i], ec)){
       // A typical color code example : \033[31;1;4m 
       //   \033[ : begin of color code, 31 : red color,  1 : bold,  4 : underlined
       s.append(seq, strlen(seq));
       s.append(v[i]);
-      s.append("\033[0m", 4);
+      s.append("\033[0m");
     }
     else{
       s.append(v[i]);
     }
-    if(i%col_num == col_num-1){
-      s.append("\x1b[0K\n\r");
-    }
-    else{
-      s.append(col_width - v[i].size(), ' ');
-    }
+    s.append(col_width - v[i].size(), ' ');
   }
   return s;
 }
 
-
 // Procedure: _autocomplete_folder 
 // The entry for folder autocomplete
 inline void Prompt::_autocomplete_folder(){
-  std::string s;
-  size_t ws_index = _line.buf.rfind(' ', _line.cur_pos) + 1;
-  std::filesystem::path p(_line.buf[ws_index] != '~' ? 
-                          _line.buf.substr(ws_index) : 
-                          _user_home().native() + _line.buf.substr(ws_index+1));
 
-  if(std::error_code ec; p.empty() or std::filesystem::is_directory(p, ec)){
+  std::string s;
+
+  size_t ws_index = _line.buf.rfind(' ', _line.cur_pos) + 1;
+
+  std::filesystem::path p(
+    _line.buf[ws_index] != '~' ? 
+    _line.buf.substr(ws_index) : 
+    _user_home().native() + _line.buf.substr(ws_index+1)
+  );
+
+  if(std::error_code ec; p.empty() or std::filesystem::is_directory(p, ec)) {
     s = _dump_files(_files_in_folder(p), p);
   }
   else{
@@ -996,11 +1028,12 @@ inline void Prompt::_key_history(LineInfo &line, bool prev){
 // Procedure: _append_character
 // Insert a character to the cursor position in line buffer
 inline bool Prompt::_append_character(LineInfo& line, char c){
+
   try{
     line.buf.insert(line.cur_pos, 1, c);
   }
-  catch (std::bad_alloc &e){
-    _cerr << "Exceed string max size\n";
+  catch (const std::exception& e){
+    _cerr << "append failed: " << e.what() << '\n';
     assert(false);
   }
   
@@ -1129,7 +1162,8 @@ inline void Prompt::_edit_line(std::string &s){
       case KEY::CTRL_C:
         errno = EAGAIN;
         return ;
-      case KEY::CTRL_D:    // Remove the char at the right of cursor. If the line is empty, act as end-of-file
+      case KEY::CTRL_D:    // Remove the char at the right of cursor. 
+                           // If the line is empty, act as end-of-file
         if(_line.buf.size() > 0){
           _key_delete(_line);
           _refresh_single_line(_line);
@@ -1230,16 +1264,22 @@ inline void Prompt::_refresh_single_line(LineInfo &l){
   char seq[64];
   ::snprintf(seq, 64, "\r\x1b[%dC", (int)(pos+_prompt.length()));
 
-  std::string obuf;
-  obuf.reserve(CR.length()+_prompt.length()+len+EL.length()+strlen(seq));
-  // Multiple copies ?
-  obuf = CR + _prompt + l.buf.substr(start, len) + EL + std::string(seq);
+  _obuf.clear();
+  _obuf.reserve(CR.length()+_prompt.length()+len+EL.length()+strlen(seq));
+  _obuf.append(CR);
+  _obuf.append(_prompt);
+  _obuf.append(l.buf.data() + start, len);
+  _obuf.append(EL);
+  _obuf.append(seq, strlen(seq));
 
-  if(not (_cout << obuf)){
+  if(not (_cout << _obuf)){
     _cerr << "Refresh line fail\n";
   }
 }
 
-};
-#endif /* __PROMPT_H */
+};  // end of namespace prompt. -------------------------------------------------------------------
+
+#endif 
+
+
 

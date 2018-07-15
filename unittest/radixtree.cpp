@@ -10,17 +10,19 @@
 
 #include "prompt.hpp"
 
+
+static const char ALPHABETS[] =
+"0123456789 -_"
+"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+"abcdefghijklmnopqrstuvwxyz";
+
+
 std::string gen_random(size_t range) {
   const size_t len {rand()%range + 1};
-	static const char alphanum[] =
-		"0123456789 -_"
-		"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-		"abcdefghijklmnopqrstuvwxyz";
-
   std::string s(len, '0');
 
 	for (size_t i=0; i<len; ++i) {
-		s[i] = alphanum[rand() % (sizeof(alphanum) - 1)];
+		s[i] = ALPHABETS[rand() % (sizeof(ALPHABETS) - 1)];
 	}
   return s;
 }
@@ -48,12 +50,25 @@ bool has_same_prefix(const prompt::RadixTree::Node& n){
 }
 
 
+bool is_prefix(std::string_view str, std::string_view prefix){
+  if(str.size() < prefix.size()){
+    return false;
+  }
+  for(size_t i=0; i<prefix.size(); i++){
+    if(prefix[i] != str[i]){
+      return false;
+    }
+  }
+  return true;
+}
+
+
 TEST_CASE("RadixTree") {
 
   srand(time(nullptr));
 
   prompt::RadixTree tree;
-  const size_t word_num {500000};
+  const size_t word_num {50000};
   const size_t range {20};
 
   std::unordered_set<std::string> words;
@@ -82,6 +97,7 @@ TEST_CASE("RadixTree") {
     }
   }
 
+
   auto ret = tree.all_words();
   REQUIRE(ret.size() == words.size());
   for(const auto& w: ret){
@@ -92,6 +108,54 @@ TEST_CASE("RadixTree") {
 
   const auto& root {tree.root()};
   REQUIRE(not has_same_prefix(root));
+
+
+
+  // ---------------------------  Check match_prefix function ------------------------------------- 
+  {
+    for(auto reverse: {false, true}){
+      std::string str;
+      const size_t len {1000};
+      // Randomly generate a string
+      while(str.size() < len){
+        str = gen_random(len);
+      }
+
+      prompt::RadixTree t;
+      // Insert substrings in decreasing length order. Those substrings that are 
+      // the prefix of the random string
+      if(reverse){
+        for(size_t i=len; i>=1; i--){
+          t.insert(str.substr(0, i));
+        }
+      }
+      else{
+        for(size_t i=1; i<=len; i++){
+          t.insert(str.substr(0, i));
+        }
+      }
+
+      // Find the matched strings using the match_prefix function
+      for(size_t i=1; i<len; i++){
+        auto match = t.match_prefix(str.substr(0, i));
+
+        std::sort(match.begin(), match.end(), [](const auto& a, const auto& b){ return a.size() < b.size(); });
+
+        REQUIRE(match.size() == len - i + 1);
+        REQUIRE(match.front().size() == i);   
+        REQUIRE(match.back().size() == len);
+        // Neighbor strings should only differ by one
+        REQUIRE(std::adjacent_find(match.begin(), match.end(), 
+              [](const auto& a, const auto& b){ return b.size() - a.size() != 1; }) == match.end());
+
+        for(const auto& m: match){
+          REQUIRE(str.compare(0, m.size(), m)==0);
+        }
+      }
+    }
+  }
+
+
 }
 
 

@@ -187,7 +187,6 @@ inline void RadixTree::_match_prefix(
   const Node& n, 
   const std::string& s
 ) const {
-
   if(n.is_word){
     vec.emplace_back(s);
   }
@@ -214,6 +213,9 @@ inline std::vector<std::string> RadixTree::match_prefix(const std::string& prefi
   }
   else{
     std::vector<std::string> matches;
+    if(prefix_node->is_word){
+      matches.emplace_back(prefix + suffix);
+    }
     for(auto &[k, v]: prefix_node->children){
       _match_prefix(matches, *v, prefix+suffix+k);
     }
@@ -439,12 +441,10 @@ class Prompt {
     bool _set_raw_mode();
     void _disable_raw_mode();
 
-    // History 
+    // History  
+    std::filesystem::path _history_log {std::filesystem::current_path()/".prompt_history"};
     size_t _max_history_size {100};
     std::list<std::string> _history;
-
-    // Unsupported terminals 
-
 
     termios _orig_termios;
     bool _has_orig_termios {false};
@@ -462,7 +462,6 @@ class Prompt {
     LineInfo _line_save;
 
     int _autocomplete_command();
-
     void _autocomplete_folder();
 
     std::vector<std::string> _files_in_folder(const std::filesystem::path&) const;
@@ -520,6 +519,9 @@ inline Prompt::~Prompt(){
   // Restore the original mode if has kept
   if(_has_orig_termios){
     ::tcsetattr(_infd, TCSAFLUSH, &_orig_termios);
+  }
+  if(not _history.empty()){
+    save_history(_history_log);
   }
 }
 
@@ -612,6 +614,7 @@ inline bool Prompt::readline(std::string& s) {
       return {};
     } 
     _edit_line(s);
+    add_history(s);
     _disable_raw_mode();
     std::cout << '\n';
     return errno == EAGAIN ? false : true;
@@ -793,6 +796,7 @@ inline std::string Prompt::_next_prefix(const std::vector<std::string>& words, c
 // Procedure: _autocomplete_command
 // This is the main entry for command autocomplete
 inline int Prompt::_autocomplete_command(){
+
   if(auto words = _tree.match_prefix(_line.buf); words.empty()){
     return 0;
   }
@@ -1166,6 +1170,7 @@ inline void Prompt::_edit_line(std::string &s){
         _refresh_single_line(_line);
         break;
       case KEY::CTRL_C:
+        _history.pop_back(); // Remove the emptry string history added in beginning  
         errno = EAGAIN;
         return ;
       case KEY::CTRL_D:    // Remove the char at the right of cursor. 
@@ -1232,6 +1237,7 @@ inline void Prompt::_edit_line(std::string &s){
         break;
       case KEY::ESC:
         if(not _key_handle_CSI(_line)){
+          _history.pop_back(); // Remove the emptry string history added in beginning  
           return;
         }
         _refresh_single_line(_line);

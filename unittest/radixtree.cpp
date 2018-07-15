@@ -122,7 +122,7 @@ TEST_CASE("RadixTree") {
       }
 
       prompt::RadixTree t;
-      // Insert substrings in decreasing length order. Those substrings that are 
+      // Insert substrings in decreasing or increasing length order. Those substrings that are 
       // the prefix of the random string
       if(reverse){
         for(size_t i=len; i>=1; i--){

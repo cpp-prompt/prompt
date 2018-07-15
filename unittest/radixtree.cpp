@@ -27,8 +27,8 @@ std::string gen_random(size_t range) {
   return s;
 }
 
-
-bool has_same_prefix(const prompt::RadixTree::Node& n){
+template <typename C>
+bool has_same_prefix(const typename prompt::RadixTree<C>::Node& n){
   std::vector<std::string_view> sv;
   for(const auto& c: n.children){
     sv.emplace_back(c.first);
@@ -42,7 +42,7 @@ bool has_same_prefix(const prompt::RadixTree::Node& n){
   }
 
   for(const auto& c: n.children){
-    if(has_same_prefix(*c.second)){
+    if(has_same_prefix<C>(*c.second)){
       return true;
     }
   }
@@ -67,7 +67,7 @@ TEST_CASE("RadixTree") {
 
   srand(time(nullptr));
 
-  prompt::RadixTree tree;
+  prompt::RadixTree<char> tree;
   const size_t word_num {50000};
   const size_t range {20};
 
@@ -97,7 +97,6 @@ TEST_CASE("RadixTree") {
     }
   }
 
-
   auto ret = tree.all_words();
   REQUIRE(ret.size() == words.size());
   for(const auto& w: ret){
@@ -107,9 +106,7 @@ TEST_CASE("RadixTree") {
   REQUIRE(words.empty());
 
   const auto& root {tree.root()};
-  REQUIRE(not has_same_prefix(root));
-
-
+  REQUIRE(not has_same_prefix<char>(root));
 
   // ---------------------------  Check match_prefix function ------------------------------------- 
   {
@@ -121,7 +118,7 @@ TEST_CASE("RadixTree") {
         str = gen_random(len);
       }
 
-      prompt::RadixTree t;
+      prompt::RadixTree<char> t;
       // Insert substrings in decreasing or increasing length order. Those substrings that are 
       // the prefix of the random string
       if(reverse){

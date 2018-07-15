@@ -1,7 +1,11 @@
 #include "prompt.hpp"
 
 int main(){
-  prompt::Prompt shell("ot> "); 
+  prompt::Prompt shell(
+    "Welcome to Prompt", 
+    "ot> ",
+    std::filesystem::current_path()/"my_prompt_history"
+  ); 
 
   shell.autocomplete("read_celllib");
   shell.autocomplete("asia");
@@ -18,11 +22,9 @@ int main(){
   for(;;){
     shell.readline(line);
     std::cout << "line = " << line << std::endl;
-    shell.add_history(line);
     // Hit enter to exit
     if(line.empty()){
       break;
     }
   }
-  shell.save_history("simple_history");
 }

@@ -117,25 +117,26 @@ constexpr size_t count_prefix(std::string_view s1, std::string_view s2){
 
 // ------------------------------------------------------------------------------------------------
 
-// Class: RadixTree
+// Class: RadixTree 
+template <typename C>
 class RadixTree{
 
   public:
   
-  struct Node {
-    bool is_word {false};
-    std::list<std::pair<std::string, std::unique_ptr<Node>>> children;
-  };
+    struct Node {
+      bool is_word {false};
+      std::list<std::pair<std::basic_string<C>, std::unique_ptr<Node>>> children;
+    };
 
    RadixTree() = default;
-   RadixTree(const std::vector<std::string>&);
+   RadixTree(const std::vector<std::basic_string<C>>&);
    
-   bool exist(std::string_view) const;
-   void insert(const std::string&);
+   bool exist(std::basic_string_view<C>) const;
+   void insert(const std::basic_string<C>&);
   
-   std::vector<std::string> match_prefix(const std::string&) const;
-   std::vector<std::string> all_words() const;
-   std::string dump() const;
+   std::vector<std::basic_string<C>> match_prefix(const std::basic_string<C>&) const;
+   std::vector<std::basic_string<C>> all_words() const;
+   std::basic_string<C> dump() const;
 
    const Node& root() const;
 
@@ -143,16 +144,17 @@ class RadixTree{
 
    Node _root;
 
-   void _insert(std::string_view, Node&);
-   void _match_prefix(std::vector<std::string>&, const Node&, const std::string&) const;
-   void _dump(const Node&, size_t, std::string&) const;
+   void _insert(std::basic_string_view<C>, Node&);
+   void _match_prefix(std::vector<std::basic_string<C>>&, const Node&, const std::basic_string<C>&) const;
+   void _dump(const Node&, size_t, std::basic_string<C>&) const;
   
-   std::pair<const Node*, std::string> _search_prefix_node(std::string_view) const;
+   std::pair<const Node*, std::basic_string<C>> _search_prefix_node(std::basic_string_view<C>) const;
 };
 
 
-// Procedure: Ctor
-inline RadixTree::RadixTree(const std::vector<std::string>& words){
+// Procedure: Ctor 
+template <typename C>
+RadixTree<C>::RadixTree(const std::vector<std::basic_string<C>>& words){
   for(const auto& w: words){
     insert(w);
   }
@@ -160,17 +162,19 @@ inline RadixTree::RadixTree(const std::vector<std::string>& words){
 
 
 // Procedure: dump 
-// Dump the radix tree into a string
-inline std::string RadixTree::dump() const {
-  std::string t;
+// Dump the radix tree into a string 
+template <typename C>
+std::basic_string<C> RadixTree<C>::dump() const {
+  std::basic_string<C> t;
   _dump(_root, 0, t);      
   t.append(1, '\n');
   return t;
 }
 
 // Procedure: _dump 
-// Recursively traverse the tree and append each level to string
-inline void RadixTree::_dump(const Node& n, size_t level, std::string& s) const {
+// Recursively traverse the tree and append each level to string 
+template <typename C>
+void RadixTree<C>::_dump(const Node& n, size_t level, std::basic_string<C>& s) const {
   for(auto &[k,v]: n.children){
     s.append(level, '-');
     s.append(1, ' ');
@@ -181,11 +185,12 @@ inline void RadixTree::_dump(const Node& n, size_t level, std::string& s) const 
 }
 
 // Procedure: _match_prefix 
-// Find all words that match the given prefix
-inline void RadixTree::_match_prefix(
-  std::vector<std::string> &vec, 
+// Find all words that match the given prefix 
+template <typename C>
+void RadixTree<C>::_match_prefix(
+  std::vector<std::basic_string<C>> &vec, 
   const Node& n, 
-  const std::string& s
+  const std::basic_string<C>& s
 ) const {
   if(n.is_word){
     vec.emplace_back(s);
@@ -196,9 +201,10 @@ inline void RadixTree::_match_prefix(
 }
 
 // Procedure: all_words 
-// Extract all words in the radix tree
-inline std::vector<std::string> RadixTree::all_words() const {
-  std::vector<std::string> words;
+// Extract all words in the radix tree 
+template <typename C>
+std::vector<std::basic_string<C>> RadixTree<C>::all_words() const {
+  std::vector<std::basic_string<C>> words;
   for(auto &[k, v]: _root.children){
     _match_prefix(words, *v, k);
   }
@@ -206,13 +212,14 @@ inline std::vector<std::string> RadixTree::all_words() const {
 }
 
 // Procedure: match_prefix 
-// Collect all words that match the given prefix
-inline std::vector<std::string> RadixTree::match_prefix(const std::string& prefix) const {
+// Collect all words that match the given prefix 
+template <typename C>
+std::vector<std::basic_string<C>> RadixTree<C>::match_prefix(const std::basic_string<C>& prefix) const {
   if(auto [prefix_node, suffix] = _search_prefix_node(prefix); prefix_node == nullptr){
     return {};
   }
   else{
-    std::vector<std::string> matches;
+    std::vector<std::basic_string<C>> matches;
     if(prefix_node->is_word){
       matches.emplace_back(prefix + suffix);
     }
@@ -224,13 +231,14 @@ inline std::vector<std::string> RadixTree::match_prefix(const std::string& prefi
 }
 
 // Procedure: _search_prefix_node 
-// Find the node that matches the given prefix
-inline std::pair<const RadixTree::Node*,std::string> RadixTree::_search_prefix_node(
-  std::string_view s
+// Find the node that matches the given prefix 
+template <typename C>
+std::pair<const typename RadixTree<C>::Node*, std::basic_string<C>> RadixTree<C>::_search_prefix_node(
+  std::basic_string_view<C> s
 ) const {
 
   Node const *n = &_root;
-  std::string suffix {""};
+  std::basic_string<C> suffix {""};
   for(size_t pos=0; pos<s.size(); ){ // Search until full match
     bool match = {false};
     for(const auto& [k, v]: n->children){
@@ -252,8 +260,9 @@ inline std::pair<const RadixTree::Node*,std::string> RadixTree::_search_prefix_n
 }
 
 // Procedure: exist 
-// Check whether the given word is in the radix tree or not
-inline bool RadixTree::exist(std::string_view s) const {
+// Check whether the given word is in the radix tree or not 
+template <typename C>
+bool RadixTree<C>::exist(std::basic_string_view<C> s) const {
 
   size_t pos {0};
   Node const *n = &_root;
@@ -282,8 +291,9 @@ inline bool RadixTree::exist(std::string_view s) const {
 }
 
 // Procedure: insert 
-// Insert a word into radix tree
-inline void RadixTree::insert(const std::string& s){
+// Insert a word into radix tree 
+template <typename C>
+void RadixTree<C>::insert(const std::basic_string<C>& s){
   if(s.empty()){  // Empty string not allowed
     return;
   }
@@ -291,8 +301,9 @@ inline void RadixTree::insert(const std::string& s){
 }
 
 // Procedure: _insert 
-// Insert a word into radix tree
-inline void RadixTree::_insert(std::string_view sv, Node& n){
+// Insert a word into radix tree 
+template <typename C>
+void RadixTree<C>::_insert(std::basic_string_view<C> sv, Node& n){
 
   // base case
   if(sv.empty()) {
@@ -322,7 +333,7 @@ inline void RadixTree::_insert(std::string_view sv, Node& n){
     else {
     
       auto& par = std::get<1>(n.children.emplace_back(
-        std::make_pair(std::string_view{sv.data(), match_num}, new Node))
+        std::make_pair(std::basic_string_view<C>{sv.data(), match_num}, new Node))
       );
 
       par->children.emplace_back(
@@ -338,8 +349,9 @@ inline void RadixTree::_insert(std::string_view sv, Node& n){
 
 
 // Procedure: root
-// Return the root of RadixTree
-inline const RadixTree::Node& RadixTree::root() const{
+// Return the root of RadixTree 
+template <typename C>
+const typename RadixTree<C>::Node& RadixTree<C>::root() const{
   return _root;
 }
 
@@ -399,7 +411,9 @@ class Prompt {
   public:
 
     Prompt(
-      const std::string& ="> ", 
+      const std::string&, 
+      const std::string&, 
+      const std::filesystem::path& = std::filesystem::current_path()/".prompt_history",
       std::istream& = std::cin, 
       std::ostream& = std::cout, 
       std::ostream& = std::cerr,
@@ -410,11 +424,7 @@ class Prompt {
 
     bool readline(std::string&);
 
-    void load_history(const std::filesystem::path&);
-    void save_history(const std::filesystem::path&);
-    void add_history(const std::string&);
     void set_history_size(size_t);
-
     size_t history_size() const { return _history.size(); };
     
     void autocomplete(const std::string&);
@@ -425,13 +435,15 @@ class Prompt {
   private: 
   
     std::string _prompt;  
+    std::filesystem::path _history_path;
     std::istream& _cin;
     std::ostream& _cout;
     std::ostream& _cerr;
+
     
     int _infd;
     
-    RadixTree _tree;
+    RadixTree<char> _tree;
   
     std::string _obuf;
 
@@ -442,9 +454,10 @@ class Prompt {
     void _disable_raw_mode();
 
     // History  
-    std::filesystem::path _history_log {std::filesystem::current_path()/".prompt_history"};
     size_t _max_history_size {100};
     std::list<std::string> _history;
+    void _add_history(const std::string&);
+    void _save_history();
 
     termios _orig_termios;
     bool _has_orig_termios {false};
@@ -495,24 +508,49 @@ inline void Prompt::LineInfo::operator = (const LineInfo& l){
   history_trace = l.history_trace;   
 }
 
-
 // Procedure: Ctor
 inline Prompt::Prompt(
-    const std::string &p, 
-    std::istream& in, 
-    std::ostream& out, 
-    std::ostream& err, int infd): 
-  _prompt(p), 
+      const std::string& welcome_msg, 
+      const std::string& pmt, 
+      const std::filesystem::path& path,
+      std::istream& in, 
+      std::ostream& out, 
+      std::ostream& err,
+      int infd
+    ):
+  _prompt(pmt), 
+  _history_path(path),
   _cin(in),
   _cout(out),
   _cerr(err),
   _infd(infd)
 {
   if(::isatty(_infd)){
+    _cout << welcome_msg << '\n';
     _line.columns = _terminal_columns();
     _line_save.columns = _line.columns;
   }
 }
+
+
+
+// Procedure: Ctor
+//inline Prompt::Prompt(
+//    const std::string &p, 
+//    std::istream& in, 
+//    std::ostream& out, 
+//    std::ostream& err, int infd): 
+//  _prompt(p), 
+//  _cin(in),
+//  _cout(out),
+//  _cerr(err),
+//  _infd(infd)
+//{
+//  if(::isatty(_infd)){
+//    _line.columns = _terminal_columns();
+//    _line_save.columns = _line.columns;
+//  }
+//}
 
 // Procedure: Dtor
 inline Prompt::~Prompt(){
@@ -521,7 +559,7 @@ inline Prompt::~Prompt(){
     ::tcsetattr(_infd, TCSAFLUSH, &_orig_termios);
   }
   if(not _history.empty()){
-    save_history(_history_log);
+    _save_history();
   }
 }
 
@@ -537,31 +575,20 @@ inline void Prompt::set_history_size(size_t new_size){
   _max_history_size = new_size;
 }
 
-// Procedure: load_history 
-// Load history commands from a file
-inline void Prompt::load_history(const std::filesystem::path& p){
-  if(std::filesystem::exists(p)){
-    std::ifstream ifs(p);
-    std::string placeholder;
-    while(std::getline(ifs, placeholder)){
-      _history.emplace_back(std::move(placeholder));
-    }
-  }
-}
 
-// Procedure: save_history 
+// Procedure: _save_history 
 // Save history commands to a file
-inline void Prompt::save_history(const std::filesystem::path& p){
-  std::ofstream ofs(p);
+inline void Prompt::_save_history(){
+  std::ofstream ofs(_history_path);
   for(const auto& c: _history){
     ofs << c << '\n';
   }
   ofs.close();
 }
 
-// Procedure: add_history 
+// Procedure: _add_history 
 // Add command to history list
-inline void Prompt::add_history(const std::string &hist){
+inline void Prompt::_add_history(const std::string &hist){
   // hist cannot be empty and cannot be the same as the last one
   if(hist.empty() or (not _history.empty() and _history.back() == hist)){
     return ;
@@ -614,7 +641,7 @@ inline bool Prompt::readline(std::string& s) {
       return {};
     } 
     _edit_line(s);
-    add_history(s);
+    _add_history(s);
     _disable_raw_mode();
     std::cout << '\n';
     return errno == EAGAIN ? false : true;

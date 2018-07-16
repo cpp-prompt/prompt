@@ -477,15 +477,13 @@ class Prompt {
     LineInfo _line_save;
 
     int _autocomplete_iterate_command();
-    void _autocomplete_folder();
-
     int _autocomplete_command();
-    std::string _dump_options(const std::vector<std::string>&);
-
+    void _autocomplete_folder();
 
     std::vector<std::string> _files_in_folder(const std::filesystem::path&) const;
     std::vector<std::string> _files_match_prefix(const std::filesystem::path&) const;
     std::string _dump_files(const std::vector<std::string>&, const std::filesystem::path&);
+    std::string _dump_options(const std::vector<std::string>&);
     std::string _next_prefix(const std::vector<std::string>&, const size_t);
 
 

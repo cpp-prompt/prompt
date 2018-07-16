@@ -401,7 +401,6 @@ class Prompt {
     std::string buf;
     size_t history_trace {0};
     size_t cur_pos {0};   // cursor position
-    size_t columns {80};  // default width of terminal is 80
 
     void operator = (const LineInfo&);
     inline void reset(){ 
@@ -444,6 +443,7 @@ class Prompt {
 
     
     int _infd;
+    size_t _columns {80};   // default width of terminal is 80
     
     RadixTree<char> _tree;
   
@@ -477,7 +477,7 @@ class Prompt {
     LineInfo _line_save;
 
     int _autocomplete_iterate_command();
-    int _autocomplete_command();
+    void _autocomplete_command();
     void _autocomplete_folder();
 
     std::vector<std::string> _files_in_folder(const std::filesystem::path&) const;
@@ -508,7 +508,6 @@ class Prompt {
 inline void Prompt::LineInfo::operator = (const LineInfo& l){
   buf = l.buf;
   cur_pos = l.cur_pos;
-  columns = l.columns; 
   history_trace = l.history_trace;   
 }
 
@@ -530,9 +529,8 @@ inline Prompt::Prompt(
   _infd(infd)
 {
   if(::isatty(_infd)){
-    _cout << welcome_msg << '\n';
-    _line.columns = _terminal_columns();
-    _line_save.columns = _line.columns;
+    _cout << welcome_msg;
+    _columns = _terminal_columns();
   }
 }
 
@@ -884,35 +882,19 @@ inline std::string Prompt::_dump_options(const std::vector<std::string>& opts){
 
 // Procedure: _autocomplete_command
 // This is the main entry for command autocomplete
-inline int Prompt::_autocomplete_command(){
+inline void Prompt::_autocomplete_command(){
   if(auto words = _tree.match_prefix(_line.buf); words.empty()){
-    return 0;
   }
   else{
-    char c {0}; 
-    while(1){
-      auto s = _dump_options(words);
-      if(auto suffix = _next_prefix(words, _line.cur_pos); not suffix.empty()){
-        _line.buf.insert(_line.cur_pos, suffix);
-        _line.cur_pos += suffix.size();
-      }
-      if(s.size() > 0){
-        s.append("\x1b[0K\n");
-        _cout << s;
-      }
-
-      _refresh_single_line(_line);
-      if(_cin.read(&c, 1); not _cin.good()){
-        return -1;
-      }
-
-      switch(static_cast<KEY>(c)){
-        case KEY::TAB:
-          break;
-        default:
-          return c;
-      }
+    if(auto suffix = _next_prefix(words, _line.cur_pos); not suffix.empty()){
+      _line.buf.insert(_line.cur_pos, suffix);
+      _line.cur_pos += suffix.size();
     }
+    if(auto s = _dump_options(words); s.size() > 0){
+      s.append("\x1b[0K\n");
+      _cout << s;
+    }
+    _refresh_single_line(_line);
   }
 }
 
@@ -1217,11 +1199,13 @@ inline void Prompt::_edit_line(std::string &s){
         continue;
       }
       else{
+        _autocomplete_command();
+        continue;
         //if(c=_autocomplete_iterate_command(); c<0){
-        if(c=_autocomplete_command(); c<0){
-          // something wrong happened
-          return;
-        }
+        //if(c=_autocomplete_command(); c<0){
+        //  // something wrong happened
+        //  return;
+        //}
         //else if(c == 0){
         // continue;
         //}
@@ -1340,14 +1324,14 @@ inline void Prompt::_refresh_single_line(LineInfo &l){
   auto pos {l.cur_pos};
   size_t start {0};
 
-  if(_prompt.length()+pos >= l.columns){
-    start += _prompt.length()+pos-l.columns-1;
-    len -= _prompt.length()+pos-l.columns-1;
-    pos += (_prompt.length()+pos-l.columns-1);
+  if(_prompt.length()+pos >= _columns){
+    start += _prompt.length()+pos-_columns-1;
+    len -= _prompt.length()+pos-_columns-1;
+    pos += (_prompt.length()+pos-_columns-1);
   }
 
-  if(_prompt.length()+len > l.columns){
-    len -= (_prompt.length()+len-l.columns);
+  if(_prompt.length()+len > _columns){
+    len -= (_prompt.length()+len-_columns);
   }
 
   char seq[64];

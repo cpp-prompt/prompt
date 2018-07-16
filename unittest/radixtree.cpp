@@ -13,18 +13,19 @@
 
 
 template <typename C>
-std::basic_string<C> gen_random(const size_t word_len) {
+C gen_random(const size_t word_len) {
 
+  using value_type = typename C::value_type;
   const size_t len {rand()%word_len + 1};
-  std::basic_string<C> s;
+  C s;
 
   size_t char_sz {0};
-  if constexpr(std::is_signed_v<C>){
+  if constexpr(std::is_signed_v<value_type>){
     // Use 1UL (type long int) instead of 1 (type int)
-    char_sz = (1UL << 7*sizeof(C));
+    char_sz = (1UL << 7*sizeof(value_type));
   }
   else{
-    char_sz = (1UL << 8*sizeof(C));
+    char_sz = (1UL << 8*sizeof(value_type));
   }
 
 	for (size_t i=0; i<len; ++i) {
@@ -36,7 +37,10 @@ std::basic_string<C> gen_random(const size_t word_len) {
 
 template <typename C>
 bool has_same_prefix(const typename prompt::RadixTree<C>::Node& n){
-  std::vector<std::basic_string_view<C>> sv;
+  using value_type = typename C::value_type;
+  using traits_type = typename C::traits_type;
+
+  std::vector<std::basic_string_view<value_type, traits_type>> sv;
   for(const auto& c: n.children){
     sv.emplace_back(c.first);
   }
@@ -56,8 +60,11 @@ bool has_same_prefix(const typename prompt::RadixTree<C>::Node& n){
   return false;
 }
 
+
 template <typename C>
-bool is_prefix(std::basic_string_view<C> str, std::basic_string_view<C> prefix){
+bool is_prefix(
+  std::basic_string_view<typename C::value_type, typename C::traits_type> str, 
+  std::basic_string_view<typename C::value_type, typename C::traits_type> prefix){
   if(str.size() < prefix.size()){
     return false;
   }
@@ -76,7 +83,7 @@ void test_radix_tree_type(){
   const size_t word_num {1000};
   const size_t word_len {20};
 
-  std::unordered_set<std::basic_string<C>> words;
+  std::unordered_set<C> words;
 
   for(size_t i=0; i<word_num; i++){
     words.emplace(gen_random<C>(word_len));
@@ -95,7 +102,7 @@ void test_radix_tree_type(){
   for(const auto& w: words){
     if(w.size() > 1){
       size_t last_index {rand()%(w.size()) + 1};
-      std::basic_string<C> s(w.data(), last_index);
+      C s(w.data(), last_index);
       if(words.find(s) == words.end()){
         REQUIRE(not tree.exist(s));
       }
@@ -116,7 +123,7 @@ void test_radix_tree_type(){
   // ---------------------------  Check match_prefix function ------------------------------------- 
   {
     for(auto reverse: {false, true}){
-      std::basic_string<C> str;
+      C str;
       const size_t len {1000};
       // Randomly generate a string
       while(str.size() < len){
@@ -160,10 +167,10 @@ void test_radix_tree_type(){
 
 TEST_CASE("RadixTree") {
   srand(time(nullptr));
-  test_radix_tree_type<char>();        // Signed type
-  test_radix_tree_type<wchar_t>();     // Signed type
-  test_radix_tree_type<char16_t>();    // Unsigned type
-  test_radix_tree_type<char32_t>();    // Unsigned type
+  test_radix_tree_type<std::string>();        // Signed type
+  test_radix_tree_type<std::wstring>();       // Signed type
+  test_radix_tree_type<std::u16string>();     // Unsigned type
+  test_radix_tree_type<std::u32string>();     // Unsigned type
 }
 
 

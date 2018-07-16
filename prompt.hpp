@@ -106,7 +106,9 @@ std::basic_istream<C, T>& read_line(
 // Function: count_prefix  
 // Count the the length of same prefix between two strings
 template <typename C>
-constexpr size_t count_prefix(std::basic_string_view<C> s1, std::basic_string_view<C> s2){
+constexpr size_t count_prefix(
+  std::basic_string_view<typename C::value_type, typename C::traits_type> s1, 
+  std::basic_string_view<typename C::value_type, typename C::traits_type> s2){
   size_t i {0};
   size_t len {std::min(s1.size(), s2.size())};
   for(; i<len; ++i){
@@ -123,22 +125,26 @@ constexpr size_t count_prefix(std::basic_string_view<C> s1, std::basic_string_vi
 template <typename C>
 class RadixTree{
 
+  using value_type     = typename C::value_type;
+  using traits_type    = typename C::traits_type;
+  using allocator_type = typename C::allocator_type;
+
   public:
   
     struct Node {
       bool is_word {false};
-      std::list<std::pair<std::basic_string<C>, std::unique_ptr<Node>>> children;
+      std::list<std::pair<C, std::unique_ptr<Node>>> children;
     };
 
    RadixTree() = default;
-   RadixTree(const std::vector<std::basic_string<C>>&);
+   RadixTree(const std::vector<C>&);
    
-   bool exist(std::basic_string_view<C>) const;
-   void insert(const std::basic_string<C>&);
+   bool exist(std::basic_string_view<value_type, traits_type>) const;
+   void insert(const C&);
   
-   std::vector<std::basic_string<C>> match_prefix(const std::basic_string<C>&) const;
-   std::vector<std::basic_string<C>> all_words() const;
-   std::basic_string<C> dump() const;
+   std::vector<C> match_prefix(const C&) const;
+   std::vector<C> all_words() const;
+   C dump() const;
 
    const Node& root() const;
 
@@ -146,17 +152,19 @@ class RadixTree{
 
    Node _root;
 
-   void _insert(std::basic_string_view<C>, Node&);
-   void _match_prefix(std::vector<std::basic_string<C>>&, const Node&, const std::basic_string<C>&) const;
-   void _dump(const Node&, size_t, std::basic_string<C>&) const;
+   void _insert(std::basic_string_view<value_type, traits_type>, Node&);
+   void _match_prefix(std::vector<C>&, const Node&, const C&) const;
+   void _dump(const Node&, size_t, C&) const;
   
-   std::pair<const Node*, std::basic_string<C>> _search_prefix_node(std::basic_string_view<C>) const;
+   std::pair<const Node*, C> _search_prefix_node(
+     std::basic_string_view<value_type, traits_type>
+   ) const;
 };
 
 
 // Procedure: Ctor 
 template <typename C>
-RadixTree<C>::RadixTree(const std::vector<std::basic_string<C>>& words){
+RadixTree<C>::RadixTree(const std::vector<C>& words){
   for(const auto& w: words){
     insert(w);
   }
@@ -166,8 +174,8 @@ RadixTree<C>::RadixTree(const std::vector<std::basic_string<C>>& words){
 // Procedure: dump 
 // Dump the radix tree into a string 
 template <typename C>
-std::basic_string<C> RadixTree<C>::dump() const {
-  std::basic_string<C> t;
+C RadixTree<C>::dump() const {
+  C t;
   _dump(_root, 0, t);      
   t.append(1, '\n');
   return t;
@@ -176,7 +184,7 @@ std::basic_string<C> RadixTree<C>::dump() const {
 // Procedure: _dump 
 // Recursively traverse the tree and append each level to string 
 template <typename C>
-void RadixTree<C>::_dump(const Node& n, size_t level, std::basic_string<C>& s) const {
+void RadixTree<C>::_dump(const Node& n, size_t level, C& s) const {
   for(auto &[k,v]: n.children){
     s.append(level, '-');
     s.append(1, ' ');
@@ -190,9 +198,9 @@ void RadixTree<C>::_dump(const Node& n, size_t level, std::basic_string<C>& s) c
 // Find all words that match the given prefix 
 template <typename C>
 void RadixTree<C>::_match_prefix(
-  std::vector<std::basic_string<C>> &vec, 
+  std::vector<C> &vec, 
   const Node& n, 
-  const std::basic_string<C>& s
+  const C& s
 ) const {
   if(n.is_word){
     vec.emplace_back(s);
@@ -205,8 +213,8 @@ void RadixTree<C>::_match_prefix(
 // Procedure: all_words 
 // Extract all words in the radix tree 
 template <typename C>
-std::vector<std::basic_string<C>> RadixTree<C>::all_words() const {
-  std::vector<std::basic_string<C>> words;
+std::vector<C> RadixTree<C>::all_words() const {
+  std::vector<C> words;
   for(auto &[k, v]: _root.children){
     _match_prefix(words, *v, k);
   }
@@ -216,12 +224,12 @@ std::vector<std::basic_string<C>> RadixTree<C>::all_words() const {
 // Procedure: match_prefix 
 // Collect all words that match the given prefix 
 template <typename C>
-std::vector<std::basic_string<C>> RadixTree<C>::match_prefix(const std::basic_string<C>& prefix) const {
+std::vector<C> RadixTree<C>::match_prefix(const C& prefix) const {
   if(auto [prefix_node, suffix] = _search_prefix_node(prefix); prefix_node == nullptr){
     return {};
   }
   else{
-    std::vector<std::basic_string<C>> matches;
+    std::vector<C> matches;
     if(prefix_node->is_word){
       matches.emplace_back(prefix + suffix);
     }
@@ -235,12 +243,12 @@ std::vector<std::basic_string<C>> RadixTree<C>::match_prefix(const std::basic_st
 // Procedure: _search_prefix_node 
 // Find the node that matches the given prefix 
 template <typename C>
-std::pair<const typename RadixTree<C>::Node*, std::basic_string<C>> RadixTree<C>::_search_prefix_node(
-  std::basic_string_view<C> s
+std::pair<const typename RadixTree<C>::Node*, C> RadixTree<C>::_search_prefix_node(
+  std::basic_string_view<value_type, traits_type> s
 ) const {
 
   Node const *n = &_root;
-  std::basic_string<C> suffix;
+  std::basic_string<value_type, traits_type> suffix;
   for(size_t pos=0; pos<s.size(); ){ // Search until full match
     bool match = {false};
     for(const auto& [k, v]: n->children){
@@ -264,7 +272,7 @@ std::pair<const typename RadixTree<C>::Node*, std::basic_string<C>> RadixTree<C>
 // Procedure: exist 
 // Check whether the given word is in the radix tree or not 
 template <typename C>
-bool RadixTree<C>::exist(std::basic_string_view<C> s) const {
+bool RadixTree<C>::exist(std::basic_string_view<value_type, traits_type> s) const {
 
   size_t pos {0};
   Node const *n = &_root;
@@ -295,7 +303,7 @@ bool RadixTree<C>::exist(std::basic_string_view<C> s) const {
 // Procedure: insert 
 // Insert a word into radix tree 
 template <typename C>
-void RadixTree<C>::insert(const std::basic_string<C>& s){
+void RadixTree<C>::insert(const C& s){
   if(s.empty()){  // Empty string not allowed
     return;
   }
@@ -305,7 +313,7 @@ void RadixTree<C>::insert(const std::basic_string<C>& s){
 // Procedure: _insert 
 // Insert a word into radix tree 
 template <typename C>
-void RadixTree<C>::_insert(std::basic_string_view<C> sv, Node& n){
+void RadixTree<C>::_insert(std::basic_string_view<value_type, traits_type> sv, Node& n){
 
   // base case
   if(sv.empty()) {
@@ -335,7 +343,8 @@ void RadixTree<C>::_insert(std::basic_string_view<C> sv, Node& n){
     else {
     
       auto& par = std::get<1>(n.children.emplace_back(
-        std::make_pair(std::basic_string_view<C>{sv.data(), match_num}, new Node))
+        std::make_pair(
+          std::basic_string_view<value_type, traits_type>{sv.data(), match_num}, new Node))
       );
 
       par->children.emplace_back(
@@ -445,10 +454,9 @@ class Prompt {
     int _infd;
     size_t _columns {80};   // default width of terminal is 80
     
-    RadixTree<char> _tree;
+    RadixTree<std::string> _tree;
   
-    std::string _obuf;
-
+    std::string _obuf;      // Buffer for _refresh_single_line
 
     bool _unsupported_term();
     void _stdin_not_tty(std::string &);
@@ -513,14 +521,14 @@ inline void Prompt::LineInfo::operator = (const LineInfo& l){
 
 // Procedure: Ctor
 inline Prompt::Prompt(
-      const std::string& welcome_msg, 
-      const std::string& pmt, 
-      const std::filesystem::path& path,
-      std::istream& in, 
-      std::ostream& out, 
-      std::ostream& err,
-      int infd
-    ):
+  const std::string& welcome_msg, 
+  const std::string& pmt, 
+  const std::filesystem::path& path,
+  std::istream& in, 
+  std::ostream& out, 
+  std::ostream& err,
+  int infd
+):
   _prompt(pmt), 
   _history_path(path),
   _cin(in),
@@ -902,7 +910,7 @@ inline void Prompt::_autocomplete_command(){
 // Procedure: _files_match_prefix
 // Find all the files in a folder that match the prefix
 inline std::vector<std::string> Prompt::_files_match_prefix(
-    const std::filesystem::path& path
+  const std::filesystem::path& path
 ) const {
   // Need to check in case path is a file in current folder (parent_path = "")
   auto folder = path.filename() == path ? std::filesystem::current_path() : path.parent_path();
@@ -985,9 +993,7 @@ inline std::string Prompt::_dump_files(
 // Procedure: _autocomplete_folder 
 // The entry for folder autocomplete
 inline void Prompt::_autocomplete_folder(){
-
   std::string s;
-
   size_t ws_index = _line.buf.rfind(' ', _line.cur_pos) + 1;
 
   std::filesystem::path p(
@@ -1096,7 +1102,6 @@ inline void Prompt::_key_history(LineInfo &line, bool prev){
 // Procedure: _append_character
 // Insert a character to the cursor position in line buffer
 inline bool Prompt::_append_character(LineInfo& line, char c){
-
   try{
     line.buf.insert(line.cur_pos, 1, c);
   }

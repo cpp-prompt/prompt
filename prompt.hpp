@@ -465,6 +465,7 @@ class Prompt {
     std::list<std::string> _history;
     void _add_history(const std::string&);
     void _save_history();
+    void _load_history();
 
     termios _orig_termios;
     bool _has_orig_termios {false};
@@ -536,6 +537,14 @@ inline Prompt::Prompt(
   if(::isatty(_infd)){
     _cout << welcome_msg;
     _columns = _terminal_columns();
+    if(std::filesystem::exists(_history_path)){
+      if(std::error_code ec; not std::filesystem::is_regular_file(_history_path, ec)){
+        _cerr << "The history file is not a regular file\n";
+      }
+      else{
+        _load_history();
+      }
+    }
   }
 }
 
@@ -572,6 +581,22 @@ inline void Prompt::_save_history(){
     ofs << c << '\n';
   }
   ofs.close();
+}
+
+
+// Procedure: _load_history 
+// Load history commands from a file
+inline void Prompt::_load_history(){
+  if(std::filesystem::exists(_history_path)){
+    std::ifstream ifs(_history_path);
+    std::string placeholder;
+    while(std::getline(ifs, placeholder)){
+      if(_history.size() == _max_history_size){
+        _history.pop_front();
+      }
+      _history.emplace_back(std::move(placeholder));
+    }
+  }
 }
 
 // Procedure: _add_history 

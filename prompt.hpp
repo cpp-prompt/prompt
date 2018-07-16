@@ -413,9 +413,9 @@ class Prompt {
   public:
 
     Prompt(
-      const std::string&, 
-      const std::string&, 
-      const std::filesystem::path& = std::filesystem::current_path()/".prompt_history",
+      const std::string&,   // Welcome message 
+      const std::string&,   // prompt
+      const std::filesystem::path& = std::filesystem::current_path()/".prompt_history",  // history log path
       std::istream& = std::cin, 
       std::ostream& = std::cout, 
       std::ostream& = std::cerr,
@@ -476,8 +476,12 @@ class Prompt {
     LineInfo _line;
     LineInfo _line_save;
 
-    int _autocomplete_command();
+    int _autocomplete_iterate_command();
     void _autocomplete_folder();
+
+    int _autocomplete_command();
+    std::string _dump_options(const std::vector<std::string>&);
+
 
     std::vector<std::string> _files_in_folder(const std::filesystem::path&) const;
     std::vector<std::string> _files_match_prefix(const std::filesystem::path&) const;
@@ -803,9 +807,9 @@ inline std::string Prompt::_next_prefix(const std::vector<std::string>& words, c
 }
 
 
-// Procedure: _autocomplete_command
-// This is the main entry for command autocomplete
-inline int Prompt::_autocomplete_command(){
+// Procedure: _autocomplete_iterate_command
+// This is the main entry for autocomplete iterating commands
+inline int Prompt::_autocomplete_iterate_command(){
 
   if(auto words = _tree.match_prefix(_line.buf); words.empty()){
     return 0;
@@ -847,6 +851,70 @@ inline int Prompt::_autocomplete_command(){
       }
     }
     return c;
+  }
+}
+
+
+inline std::string Prompt::_dump_options(const std::vector<std::string>& opts){
+  if(opts.empty()){
+    return {};
+  }
+
+  const size_t col_width = std::max_element(opts.begin(), opts.end(), 
+    [](const auto& a, const auto& b){ 
+      return a.size() < b.size();
+    }
+  )->size() + 4;
+
+  auto col_num = std::max(size_t{1}, _terminal_columns() / col_width);
+
+  std::string s;
+  for(size_t i=0; i<opts.size(); ++i){
+    if(i % col_num == 0) {
+      s.append("\n\r\x1b[0K");
+    }
+
+    s.append(opts[i]);
+
+    if(opts[i].size() < col_width){
+      s.append(col_width - opts[i].size(), ' ');
+    }
+  }
+  return s;
+}
+
+
+// Procedure: _autocomplete_command
+// This is the main entry for command autocomplete
+inline int Prompt::_autocomplete_command(){
+  if(auto words = _tree.match_prefix(_line.buf); words.empty()){
+    return 0;
+  }
+  else{
+    char c {0}; 
+    while(1){
+      auto s = _dump_options(words);
+      if(auto suffix = _next_prefix(words, _line.cur_pos); not suffix.empty()){
+        _line.buf.insert(_line.cur_pos, suffix);
+        _line.cur_pos += suffix.size();
+      }
+      if(s.size() > 0){
+        s.append("\x1b[0K\n");
+        _cout << s;
+      }
+
+      _refresh_single_line(_line);
+      if(_cin.read(&c, 1); not _cin.good()){
+        return -1;
+      }
+
+      switch(static_cast<KEY>(c)){
+        case KEY::TAB:
+          break;
+        default:
+          return c;
+      }
+    }
   }
 }
 
@@ -1151,13 +1219,14 @@ inline void Prompt::_edit_line(std::string &s){
         continue;
       }
       else{
+        //if(c=_autocomplete_iterate_command(); c<0){
         if(c=_autocomplete_command(); c<0){
           // something wrong happened
           return;
         }
-        else if(c == 0){
-         continue;
-        }
+        //else if(c == 0){
+        // continue;
+        //}
       }
     }
 

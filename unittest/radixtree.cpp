@@ -124,7 +124,7 @@ void test_radix_tree_type(){
       }
 
       prompt::RadixTree<C> t;
-      // Insert substrings in decreasing or increasing length order. Those substrings that are 
+      // Insert substrings in decreasing or increasing length order. Those substrings are 
       // the prefix of the random string
       if(reverse){
         for(size_t i=len; i>=1; i--){
@@ -160,10 +160,10 @@ void test_radix_tree_type(){
 
 TEST_CASE("RadixTree") {
   srand(time(nullptr));
-  test_radix_tree_type<char>();
-  test_radix_tree_type<wchar_t>();
-  test_radix_tree_type<char16_t>();
-  test_radix_tree_type<char32_t>();
+  test_radix_tree_type<char>();        // Signed type
+  test_radix_tree_type<wchar_t>();     // Signed type
+  test_radix_tree_type<char16_t>();    // Unsigned type
+  test_radix_tree_type<char32_t>();    // Unsigned type
 }
 
 

@@ -103,8 +103,10 @@ std::basic_istream<C, T>& read_line(
 
 // ------------------------------------------------------------------------------------------------
 
-// Function: count_prefix
-constexpr size_t count_prefix(std::string_view s1, std::string_view s2){
+// Function: count_prefix  
+// Count the the length of same prefix between two strings
+template <typename C>
+constexpr size_t count_prefix(std::basic_string_view<C> s1, std::basic_string_view<C> s2){
   size_t i {0};
   size_t len {std::min(s1.size(), s2.size())};
   for(; i<len; ++i){
@@ -238,11 +240,11 @@ std::pair<const typename RadixTree<C>::Node*, std::basic_string<C>> RadixTree<C>
 ) const {
 
   Node const *n = &_root;
-  std::basic_string<C> suffix {""};
+  std::basic_string<C> suffix;
   for(size_t pos=0; pos<s.size(); ){ // Search until full match
     bool match = {false};
     for(const auto& [k, v]: n->children){
-      if(auto num = count_prefix(k, s.data()+pos); num>0){
+      if(auto num = count_prefix<C>(k, s.data()+pos); num>0){
         pos += num;
         if(pos == s.size()){
           suffix = k.substr(num, k.size()-num);
@@ -269,7 +271,7 @@ bool RadixTree<C>::exist(std::basic_string_view<C> s) const {
   while(not n->children.empty()){ // Search until reaching the leaf
     bool match {false};
     for(const auto& [k, v]: n->children){
-      auto match_num = count_prefix(k, s.data()+pos);
+      auto match_num = count_prefix<C>(k, s.data()+pos);
       if(match_num > 0){
         if(pos += match_num; pos == s.size()){
           if(match_num == k.size() and v->is_word){
@@ -314,7 +316,7 @@ void RadixTree<C>::_insert(std::basic_string_view<C> sv, Node& n){
   size_t match_num {0};
 
   auto itr = std::find_if(n.children.begin(), n.children.end(), [&] (const auto& kv) {
-    if(match_num = count_prefix(std::get<0>(kv), sv); match_num > 0) {
+    if(match_num = count_prefix<C>(std::get<0>(kv), sv); match_num > 0) {
       return true;
     }
     else return false;
@@ -532,25 +534,6 @@ inline Prompt::Prompt(
   }
 }
 
-
-
-// Procedure: Ctor
-//inline Prompt::Prompt(
-//    const std::string &p, 
-//    std::istream& in, 
-//    std::ostream& out, 
-//    std::ostream& err, int infd): 
-//  _prompt(p), 
-//  _cin(in),
-//  _cout(out),
-//  _cerr(err),
-//  _infd(infd)
-//{
-//  if(::isatty(_infd)){
-//    _line.columns = _terminal_columns();
-//    _line_save.columns = _line.columns;
-//  }
-//}
 
 // Procedure: Dtor
 inline Prompt::~Prompt(){

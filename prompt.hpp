@@ -439,9 +439,6 @@ class Prompt {
     
     void autocomplete(const std::string&);
 
-    const std::string CR {"\r"};       // Carriage Return (set cursor to left)
-    const std::string EL {"\x1b[0K"};  // Erase in Line (clear from cursor to the end of the line)
-
   private: 
   
     std::string _prompt;  
@@ -454,7 +451,7 @@ class Prompt {
     int _infd;
     size_t _columns {80};   // default width of terminal is 80
     
-    RadixTree<std::string> _tree;
+    RadixTree<std::string> _tree;  // Radix tree for command autocomplete
   
     std::string _obuf;      // Buffer for _refresh_single_line
 
@@ -1325,6 +1322,9 @@ inline void Prompt::_refresh_single_line(LineInfo &l){
   // 4. Append "forward cursor" to the output buffer : Adjust cursor to correct pos
   // 5. Write output buffer to fd  
   
+  static const std::string CR {"\r"};       // Carriage Return (set cursor to left)
+  static const std::string EL {"\x1b[0K"};  // Erase in Line (clear from cursor to the end of the line)
+
   auto len {l.buf.size()};
   auto pos {l.cur_pos};
   size_t start {0};
@@ -1358,6 +1358,4 @@ inline void Prompt::_refresh_single_line(LineInfo &l){
 };  // end of namespace prompt. -------------------------------------------------------------------
 
 #endif 
-
-
 

@@ -1114,7 +1114,7 @@ inline void Prompt::_key_history(LineInfo &line, bool prev){
     if(line.history_trace += prev ? 1 : -1; line.history_trace < 0){
       line.history_trace = 0;
     }
-    else if(line.history_trace >= _history.size()){
+    else if(line.history_trace >= static_cast<int>(_history.size())){
       line.history_trace = _history.size()-1;
     }
     else{

@@ -408,7 +408,7 @@ class Prompt {
   struct LineInfo{
     
     std::string buf;
-    size_t history_trace {0};
+    int history_trace {0};
     size_t cur_pos {0};   // cursor position
 
     void operator = (const LineInfo&);
@@ -577,6 +577,10 @@ inline void Prompt::set_history_size(size_t new_size){
 // Save history commands to a file
 inline void Prompt::_save_history(){
   std::ofstream ofs(_history_path);
+  if(not ofs.good()){
+    return;
+  }
+  
   for(const auto& c: _history){
     ofs << c << '\n';
   }

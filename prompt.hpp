@@ -1024,8 +1024,8 @@ inline void Prompt::_autocomplete_folder(){
 
   std::filesystem::path p(
     _line.buf[ws_index] != '~' ? 
-    _line.buf.substr(ws_index) : 
-    _user_home().native() + _line.buf.substr(ws_index+1)
+    _line.buf.substr(ws_index, _line.cur_pos - ws_index) : 
+    _user_home().native() + _line.buf.substr(ws_index+1, _line.cur_pos-ws_index-1)
   );
 
   if(std::error_code ec; p.empty() or std::filesystem::is_directory(p, ec)) {

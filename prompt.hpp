@@ -186,8 +186,7 @@ C RadixTree<C>::dump() const {
 template <typename C>
 void RadixTree<C>::_dump(const Node& n, size_t level, C& s) const {
   for(auto &[k,v]: n.children){
-    s.append(level, '-');
-    s.append(1, ' ');
+    s.append(level, '-').append(1, ' ');
     s += k;
     s.append(1, '\n');
     _dump(*v, level+1, s);
@@ -1004,13 +1003,12 @@ inline std::string Prompt::_dump_files(
     if(std::filesystem::is_directory(path.native() + "/" + v[i], ec)){
       // A typical color code example : \033[31;1;4m 
       //   \033[ : begin of color code, 31 : red color,  1 : bold,  4 : underlined
-      s.append(seq, strlen(seq));
-      s.append(v[i]);
-      s.append("\033[0m");
+      s.append(seq, strlen(seq)).append(v[i]).append("\033[0m");
     }
     else{
       s.append(v[i]);
     }
+
     s.append(col_width - v[i].size(), ' ');
   }
   return s;
@@ -1373,11 +1371,8 @@ inline void Prompt::_refresh_single_line(LineInfo &l){
 
   _obuf.clear();
   _obuf.reserve(CR.length()+_prompt.length()+len+EL.length()+strlen(seq));
-  _obuf.append(CR);
-  _obuf.append(_prompt);
-  _obuf.append(l.buf.data() + start, len);
-  _obuf.append(EL);
-  _obuf.append(seq, strlen(seq));
+  _obuf.append(CR).append(_prompt).append(l.buf.data() + start, len)
+       .append(EL).append(seq, strlen(seq));
 
   if(not (_cout << _obuf)){
     _cerr << "Refresh line fail\n";

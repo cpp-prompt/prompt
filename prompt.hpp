@@ -491,7 +491,6 @@ class Prompt {
     std::string _dump_options(const std::vector<std::string>&);
     std::string _next_prefix(const std::vector<std::string>&, const size_t);
 
-
     std::filesystem::path _user_home() const;
     bool _has_read_access(const std::filesystem::path&) const;
 
